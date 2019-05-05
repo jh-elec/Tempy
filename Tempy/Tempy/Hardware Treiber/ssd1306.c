@@ -12,10 +12,14 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <string.h>
+#include <stdlib.h>
 #include "I2C.h"
 #include "ssd1306.h"
 
 font_t font;
+
+static uint8_t DisplayRam[ ( SSD1306_LCD_WIDTH * SSD1306_LCD_HEIGHT ) / 8 ] = "0xFF";
 
 uint8_t buff[3]			= "";
 uint8_t ssd1306Error	= 0;
@@ -75,7 +79,7 @@ uint8_t ssd1306Reads( uint8_t *buff , uint8_t leng )
 	return 0;
 }
 
-uint8_t ssd1306Writes( uint8_t *buff , uint8_t leng )
+uint8_t ssd1306Writes( uint8_t *buff , uint16_t leng )
 {
 	cli();
 	
@@ -88,7 +92,7 @@ uint8_t ssd1306Writes( uint8_t *buff , uint8_t leng )
 		return 1;
 	}
 
-	for ( uint8_t i = 0 ; i < leng ; i++ )
+	for ( uint16_t i = 0 ; i < leng ; i++ )
 	{
 		if ( leng == 1 )
 		{
@@ -177,6 +181,8 @@ void glcdInit(void)
 	{
 		ssd1306SendCmd( buff[i] );
 	}
+	
+	Ssd1306ClearScreen();
 }
 
 void glcdGoto( uint8_t y , uint8_t x )
@@ -316,3 +322,105 @@ void glcdPrintImage(const uint8_t *image, uint16_t sizeofimage, uint8_t y , uint
 	}
 }
 
+
+
+#ifdef __USE_NEW_FUNCTIONS__
+
+void Ssd1306ClearScreen( void )
+{
+	memset( DisplayRam , 0x00 , sizeof( DisplayRam ) );
+}
+
+void Ssd1306FillScreen( void )
+{
+	memset( DisplayRam , 0xFF , sizeof( DisplayRam ) );
+}
+
+void   Ssd1306DrawPixel( int16_t x , int16_t y )
+{
+	if ( ( y >= SSD1306_LCD_WIDTH ) || ( y < 0 ) || ( x >= SSD1306_LCD_HEIGHT ) || ( x < 0 ) )
+	{
+		return;		
+	}
+	
+	DisplayRam[ y + ( x / 8 ) * SSD1306_LCD_WIDTH ] |=  ( 1 << ( x & 7 ) );
+}
+
+void   Ssd1306ClearPixel( int16_t x , int16_t y )
+{
+	if ( ( y >= SSD1306_LCD_WIDTH ) || ( y < 0 ) || ( x >= SSD1306_LCD_HEIGHT ) || ( x < 0 ) )
+	{
+		return;
+	}
+	
+	DisplayRam[ y + ( x / 8 ) * SSD1306_LCD_WIDTH ] &=  ~( 1 << ( x & 7 ) );
+}
+
+void Ssd1306PutChar( char c , uint8_t y , uint8_t x )
+{	
+	font = calcFontStart( c , font , font.fontPtr );	
+	
+	uint8_t Pages = ((font.fontPtr[3] / 8 ) + 2 );
+	
+	#define FONT_IS_FIXED			0x01
+	#define FONT_IS_NOT_FIXED		(!(FONT_IS_FIXED))
+
+	/*
+	*	Ist wichtig für den Abstand der Zeichen!
+	*/
+	if (font.fontPtr[7] == FONT_IS_FIXED)
+	{
+		font.width = font.fontPtr[2];
+	}
+	
+	/*
+	*	Test Byte in Pixel zerlegen & in den "DisplayRam" laden:
+	*	Test Zeichen = 11110000 , 00001100 , 00000010 , ‭00011100‬ , ‭01100000‬ , ‭10000000‬
+	*
+	*	   [0..127]
+	*	[0]1000001------------------------------
+	*	[1]1000110------------------------------
+	*	[2]1000110------------------------------
+	*	[3]1001000------------------------------
+	*	[4]0101000------------------------------
+	*	[5]0101000------------------------------
+	*	[6]0010000------------------------------
+	*	[7]0000000------------------------------
+	*/
+	for ( uint8_t ActualPage = 0 ; ActualPage < Pages ; ActualPage++ )
+	{
+		for ( uint8_t CharWidth = 0 ; CharWidth < font.width ; CharWidth++ )
+		{
+			for ( uint8_t BitPosition = 0 ; BitPosition < 8 ; BitPosition++) // Byte auf gesetzte Bits überprüfen..
+			{
+				if ( font.fontPtr[font.indexNum+CharWidth] & 1<<BitPosition )
+				{
+					Ssd1306DrawPixel( x + BitPosition * ActualPage , y + CharWidth );
+				}else
+				{
+					Ssd1306ClearPixel( x + BitPosition * ActualPage , y + CharWidth );
+				}
+			}
+		}
+	}
+}
+
+void Ssd1306SendRam( void )
+{
+	ssd1306SendCmd(SSD1306_CMD_COLUMN_LOW_ADDR  | 0x0 );
+	ssd1306SendCmd(SSD1306_CMD_COLUMN_HIGH_ADDR | 0x0 );
+	ssd1306SendCmd(SSD1306_CMD_SET_START_LINE  | 0x0 );
+
+	i2c_start( SSD1306_ADDR + I2C_WRITE );
+	
+	i2c_write( SSD1306_MODE_DATA ); // Data is comming..
+	
+	for ( uint16_t ui = 0 ; ui < sizeof( DisplayRam ) ; ui++ )
+	{
+		i2c_write( DisplayRam[ui] );
+	}
+	i2c_stop(); 
+}
+
+
+#endif 

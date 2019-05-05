@@ -1027,6 +1027,14 @@ int main(void)
 // 	sht21GetSerialNumber ( ser );
 // 	sht21ShowSerialNumber( ser );
 		
+	glcdSetFont( (const __flash uint8_t*)&Arial14 );
+		
+// 	while (1)
+// 	{
+// 		Ssd1306PutChar( 'X' , 10 , 10 );
+// 		Ssd1306SendRam();
+// 	}
+	
 	
 		
     while (1) 

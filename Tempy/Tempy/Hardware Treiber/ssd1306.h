@@ -111,3 +111,22 @@ void glcdPutc(char c, uint8_t y, uint8_t x);
 void glcdPuts(char *str, uint8_t y , uint8_t x);
 
 void glcdPrintImage(const uint8_t *image, uint16_t sizeofimage, uint8_t y , uint8_t x);
+
+
+#define __USE_NEW_FUNCTIONS__
+
+#ifdef __USE_NEW_FUNCTIONS__
+
+void Ssd1306ClearScreen( void );
+
+void Ssd1306FillScreen( void );
+
+void Ssd1306DrawPixel( int16_t y , int16_t x );
+
+void Ssd1306ClearPixel( int16_t y , int16_t x );
+
+void Ssd1306PutChar( char c , uint8_t y , uint8_t x );
+
+void Ssd1306SendRam( void );
+
+#endif 
