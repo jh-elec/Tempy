@@ -4,7 +4,7 @@
  * File Name           : System5x7.h
  * Date                : 28 Oct 2008
  * Font size in bytes  : 470
- * Font width          : 5
+ * Font uiCharWidth          : 5
  * Font height         : 7
  * Font first char     : 32
  * Font last char      : 127
@@ -15,17 +15,17 @@
 
 const uint8_t __flash  System5x7[]= 
 {
-    0x0, 0x0, // size of zero indicates fixed width font, actual length is width * height
-    0x05, // width
+    0x0, 0x0, // size of zero indicates fixed Width Font, actual length is Width * height
+    0x05, // Width
     0x07, // height
     0x20, // first char
     0x7f, // char count
     
 	0x08, // offset
-	0x01, // fixed font or not (0x01 = fixed)	
+	0x01, // fixed Font or not (0x01 = fixed)	
 		
-    // Fixed width; char width table not used !!!!
-    // font data
+    // Fixed Width; char Width table not used !!!!
+    // Font data
     0x00, 0x00, 0x00, 0x00, 0x00,// (space)
 	0x00, 0x00, 0x5F, 0x00, 0x00,// !
 	

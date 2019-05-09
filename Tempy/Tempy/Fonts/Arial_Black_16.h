@@ -38,12 +38,6 @@
 
 #include <inttypes.h>
 
-#ifndef ARIAL_BLACK_16_H
-#define ARIAL_BLACK_16_H
-
-#define ARIAL_BLACK_16_WIDTH 10
-#define ARIAL_BLACK_16_HEIGHT 16
-
 const uint8_t __flash Arial_Black_16[] = 
 {
     0x30, 0x86, // size
@@ -167,5 +161,3 @@ const uint8_t __flash Arial_Black_16[] =
     0xF8, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0xF8, 0x1F, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F // 127
     
 };
-
-#endif

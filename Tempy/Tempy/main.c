@@ -34,6 +34,7 @@
 #include "Fonts/fixed_num_8x16.h"
 #include "Fonts/fixed_num_15x31.h"
 #include "Fonts/fixed_num_5x7.h"
+#include "Fonts/Verdana24.h"
 
 #include "build_info.h"
 #include "ttostr.h"
@@ -322,13 +323,15 @@ uint8_t cnfgTime_				( uint8_t *buff )
 	buff[TIME_MINUTES]	= bcdToDec(rtc.minute);
 	buff[TIME_SECOUNDS]	= bcdToDec(rtc.second);
 	
-	glcdSetFont( System5x7 );
-	glcdClear();
-	glcdPuts("-Uhrzeit stellen.." , 0 , 0 );
-	glcdSetFont( fixednums15x31 );
+	Ssd1306SetFont( System5x7 );
+	//Ssd1306Clear();
+	//Ssd1306PutS("-Uhrzeit stellen.." , 0 , 0 );
+	Ssd1306PutString("-Uhrzeit stellen.." , 0 , 0 );
+	Ssd1306SetFont( fixednums15x31 );
 
 	
-	glcdPuts( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
+	//Ssd1306PutS( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
+	Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
 		
     for ( uint8_t i = 0 ; i < 3 && ( ! ( flag.menueTimeout ) )  ; i++ )
     {
@@ -370,25 +373,29 @@ uint8_t cnfgTime_				( uint8_t *buff )
 			{
 				case 0:
 				{
-					glcdPuts( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
+					//Ssd1306PutS( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
+					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
+					Ssd1306SendRam();
 					_delay_ms( 100 );
-					glcdPuts( dec_ttostr( 0xFF , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );		
+					//Ssd1306PutS( dec_ttostr( 0xFF , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );		
+					Ssd1306PutString( dec_ttostr( 0xFF , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
+					Ssd1306SendRam();
 					_delay_ms( 100 );
 				}break;
 					
 				case 1:
 				{
-					glcdPuts( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );
+					Ssd1306PutS( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );
 					_delay_ms( 100 );
-					glcdPuts( dec_ttostr( buff[TIME_HOUR] , 0xFF , buff[TIME_SECOUNDS] ) , 25 , 0 );
+					Ssd1306PutS( dec_ttostr( buff[TIME_HOUR] , 0xFF , buff[TIME_SECOUNDS] ) , 25 , 0 );
 					_delay_ms( 100 );				
 				}break;
 					
 				case 2:
 				{
-					glcdPuts( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );
+					Ssd1306PutS( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );
 					_delay_ms( 100 );
-					glcdPuts( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , 0xFF ) , 25 , 0 );
+					Ssd1306PutS( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , 0xFF ) , 25 , 0 );
 					_delay_ms( 100 );				
 				}break;
 			}
@@ -397,7 +404,8 @@ uint8_t cnfgTime_				( uint8_t *buff )
 	
 	rtcSetTime( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] );
  
-	glcdClear();
+	//Ssd1306Clear();
+	
 	
     return SUCCESS;
 }
@@ -449,7 +457,7 @@ menue_t menueStructMain []	=
 
 uint8_t showMenue				(menue_t *m, enc_t *enc, size_t menueLen)
 {
-	glcdSetFont( System5x7 );
+	Ssd1306SetFont( System5x7 );
 	
 	int8_t  pageStart = 0;
 	uint8_t menueEntry = 0 , y = 0 , retCursor = 0;
@@ -489,20 +497,22 @@ uint8_t showMenue				(menue_t *m, enc_t *enc, size_t menueLen)
 		/*
 		*	Menü Name
 		*/
-		glcdPuts( (char*)m[0].Name , 0 , 0 );	
+		Ssd1306PutS( (char*)m[0].Name , 0 , 0 );	
+		//Ssd1306PutString( (char*)m[0].Name , 0 , 0 );	
 	
 		/*
 		*	Softwareversion
 		*/
-		glcdPuts( buildVer() , 60 , 0 );
+		Ssd1306PutS( buildVer() , 60 , 0 );
+		//Ssd1306PutString( buildVer() , 60 , 0 );
 	
 		for ( y = 2 ; y < 6 ; y++ )
 		{
 			menueEntry = pageStart + ( y - 1 );
-			glcdGoto( y , 0 );
+			Ssd1306Goto( y , 0 );
 			for ( uint8_t i = 0 ; i < 60 ; i++ )
 			{
-				ssd1306SendData( 0x00 );
+				Ssd1306SendData( 0x00 );
 			}
 			
 			if ( menueEntry < menueLen )
@@ -510,12 +520,12 @@ uint8_t showMenue				(menue_t *m, enc_t *enc, size_t menueLen)
 				if ( menueEntry == enc->result )
 				{	
 					retCursor = enc->result;
-					glcdPuts( "->" , y * 8 , 0 );
-					glcdPuts( (char*)m[menueEntry].Name , y * 8 , 10 );
+					Ssd1306PutS( "->" , y * 8 , 0 );
+					Ssd1306PutS( (char*)m[menueEntry].Name , y * 8 , 10 );
 				}
 				else
 				{
-					glcdPuts( (char*)m[menueEntry].Name , y * 8 , 0 );
+					Ssd1306PutS( (char*)m[menueEntry].Name , y * 8 , 0 );
 				}		
 			}
 		}
@@ -526,7 +536,7 @@ uint8_t showMenue				(menue_t *m, enc_t *enc, size_t menueLen)
 			button.enterRpt = 0;
 			flag.menueTimeout = 0;	
 				
-			glcdClear();
+			//Ssd1306Clear();
 									
 			/*
 			*	Funktion aufrufen die für diesen Menüpunkt
@@ -537,24 +547,24 @@ uint8_t showMenue				(menue_t *m, enc_t *enc, size_t menueLen)
 				enc->result = 0 ;
 				if (m[retCursor].fp() == MENUE_EXIT )
 				{
-					glcdSetFont( System5x7 );
+					Ssd1306SetFont( System5x7 );
 					flag.menueTimeout = 0;
 					button.enter = 0;
 					button.enterRpt = 0;
 					break;
 				}
 			}	
-			glcdSetFont( System5x7 );
+			Ssd1306SetFont( System5x7 );
 			flag.menueTimeout = 0;
 			button.enter = 0;
 			button.enterRpt = 0;
-			glcdClear();
+			//Ssd1306Clear();
 
 			enc->result = m[retCursor].cursPos;						
 		}		
 	}	
 	
-	glcdClear();
+//	Ssd1306Clear();
 	showNewValues = 0; showNewValues_ = 1;	
 	return 0;
 }
@@ -568,10 +578,10 @@ uint8_t menueTime				( void )
 
 uint8_t reboot					( void )
 {
-	glcdClear();
+//	Ssd1306Clear();
 	
-	glcdSetFont( Arial_Black_16 );
-	glcdPuts( "Reboot.." , 25 , 0 );	
+	Ssd1306SetFont( Arial_Black_16 );
+	Ssd1306PutS( "Reboot.." , 25 , 0 );	
 	
 	_delay_ms(2500);
 	
@@ -583,10 +593,10 @@ uint8_t reboot					( void )
 
 void clearLine					( uint8_t posx )
 {	
-	glcdGoto( posx , 0);
+	Ssd1306Goto( posx , 0);
 	for ( uint8_t i = 0 ; i < 128 ; i++ )
 	{
-		ssd1306SendData( 0x00 );
+		Ssd1306SendData( 0x00 );
 	}
 }
 
@@ -663,7 +673,7 @@ void refreshDisplay				( void )
 		if ( showNewValues != showNewValues_ )
 		{			
 			showNewValues = showNewValues_;
-			glcdSetFont( System5x7 );
+			Ssd1306SetFont( System5x7 );
 			
 			if ( readSens.processValue.sht21.humidity > 99 )
 			{
@@ -674,36 +684,32 @@ void refreshDisplay				( void )
 			strcpy( output , "Luftdruck: " );
 			strcat( output , tmp );
 			strcat( output , " hpa");
-			glcdPuts(output , 35 , 0 );
+			Ssd1306PutString(output , 33 , 0 );
 			
 			itoa( readSens.processValue.sht21.humidity , tmp , 10 );
 			strcpy( output , "Luftfeu. : ");
 			strcat(output  , tmp );
 			strcat(output  , " % ");
-			glcdPuts(output, 40 , 0 );
+			Ssd1306PutString(output, 40 , 0 );
 			
 			itoa( readSens.processValue.sht21.temp , tmp , 10 );
 			strcpy(output , "Temp.[1] : ");
 			strcat( output , tmp );
 			strcat(output , " Cel. " );
-			glcdPuts( output , 50 , 0 );
+			Ssd1306PutString( output , 48 , 0 );
 			
-// 			itoa( (int16_t)readSens.processValue.bmp180.temp / 10 , tmp , 10 );
-// 			strcpy(output , "Temp.[2] : ");
-// 			strcat( output , tmp );
-// 			strcat(output , " Cel. " );
-// 			glcdPuts( output , 60 , 0 );
-
 			strcpy(output , "Error(s) : ");
 			strcat( output , errorGetById( &err , _ERROR_GLCD_I2C_ ) );
-			glcdPuts( output , 60 , 0 );
-
+			Ssd1306PutString( output , 56 , 0 );
+			
+			Ssd1306SendRam();
 		}
 	}
 	else
 	{
-		glcdSetFont( System5x7 );
-		glcdPuts("Scanning now.." , 50 , 20 );
+ 		Ssd1306SetFont( System5x7 );
+ 		Ssd1306PutString("Scanning now.." , 50 , 20 );
+		Ssd1306SendRam();
 		clearOld = 0 ; clearNew = 1;
 	}
 }
@@ -735,19 +741,19 @@ uint8_t showMinMaxValues		( minMax_t *mm , uint8_t pos )
 	*/
 	strcpy	( output , mm->nameOfSensor );
 	strcat	( output , " [max/min]");
-	glcdPuts( output , 0 , 0);
+	Ssd1306PutS( output , 0 , 0);
 
 	strcpy	( output , mm->nameOfValue );
 	strcat	( output , "[max].: ");
 	itoa	( mm->max , tmp , 10 );	
 	strcat	( output , tmp );		
-	glcdPuts( output , pos , 0 );
+	Ssd1306PutS( output , pos , 0 );
 	
 	strcpy	( output , mm->nameOfValue );	
 	strcat	( output , "[min].: ");
 	itoa	( mm->min , tmp , 10 );
 	strcat	( output , tmp );
-	glcdPuts( output , pos + 10 , 0 );
+	Ssd1306PutS( output , pos + 10 , 0 );
 				
 	return 0;
 }
@@ -756,7 +762,7 @@ uint8_t bmp180MinMax			( void )
 {
 	if ( ! (readSens.ready & 1<<AVERAGE_FIRST_READY ) )
 	{
-		glcdPuts("Please try later.." , 30 , 0);
+		Ssd1306PutS("Please try later.." , 30 , 0);
 		_delay_ms(1500);
 		return MENUE_EXIT;
 	}
@@ -772,7 +778,7 @@ uint8_t bmp180MinMax			( void )
 		}
 	}
 	
-	glcdClear();
+//	Ssd1306Clear();
 	
 	return 0;
 }
@@ -781,7 +787,7 @@ uint8_t sht21MinMax				( void )
 {
 	if ( ! (readSens.ready & 1<<AVERAGE_FIRST_READY ) )
 	{
-		glcdPuts("Please try later.." , 30 , 0);
+		Ssd1306PutS("Please try later.." , 30 , 0);
 		_delay_ms(1500);
 		return MENUE_EXIT;
 	}
@@ -796,7 +802,7 @@ uint8_t sht21MinMax				( void )
 			break;
 		}	
 	}
-	glcdClear();
+//	Ssd1306Clear();
 	
 	return 0;
 }
@@ -810,13 +816,13 @@ uint8_t menueExit				( void )
 
 uint8_t operatingHours			( void )
 {
-	glcdPuts( "-Betriebsstunden" , 0 , 0 );
-	glcdSetFont( fixednums15x31 );
+	Ssd1306PutS( "-Betriebsstunden" , 0 , 0 );
+	Ssd1306SetFont( fixednums15x31 );
 	
 	while (1)
 	{
 		u16Str( operating.hours , output );
-		glcdPuts( output , 30 , 20 );
+		Ssd1306PutS( output , 30 , 20 );
 		
 		if ( button.enterRpt || flag.menueTimeout )
 		{
@@ -830,9 +836,9 @@ uint8_t operatingHours			( void )
 			button.enter = 0;
 			if ( ++enterWasTipped >= 10 )
 			{
-				glcdClear();
-				glcdSetFont( System5x7 );
-				glcdPuts("Zaehler geloescht!" , 30 , 0 );
+//				Ssd1306Clear();
+				Ssd1306SetFont( System5x7 );
+				Ssd1306PutS("Zaehler geloescht!" , 30 , 0 );
 				enterWasTipped = 0;
 				eeprom_write_word( &operatingEEP.hours , 0 );
 				operating.hours = 0;
@@ -841,7 +847,7 @@ uint8_t operatingHours			( void )
 			}
 		}
 	}
-	glcdClear();
+//	Ssd1306Clear();
 	
 	return 0;
 }
@@ -868,38 +874,18 @@ void eepReload					( void )
 	ram.brightness = eeprom_read_byte( &eep.brightness );
 }
 
-void sht21ShowSerialNumber		( uint8_t *numb )
-{
-	glcdClear();
-	glcdSetFont( System5x7 );
-	char tmp[4] = "";
-	for ( uint8_t i = 0 ; i < 8 ; i++ )
-	{
-		memset( (char*)output , 0 , sizeof(output) );
-		strcpy( output , "Byte[");
-		output[5] = i + '0';
-		strcat( output , "] - ");
-		itoa( numb[i] , tmp , 10 );
-		strcat( output , tmp );
-		glcdPuts( output , i*8 , 0 );
-	}
-	
-	_delay_ms(15000);
-	glcdClear();
-}
-
 uint8_t setBrightness			( void )
 {
-	glcdSetFont( System5x7 );
+	Ssd1306SetFont( System5x7 );
 	strcpy( output , "-" );
 	strcat( output , menueStructMain[4].Name );
-	glcdPuts( output , 0 , 0 ); 
+	Ssd1306PutS( output , 0 , 0 ); 
 	
 	char tmp[5] = "";
 	uint8_t old = 0;
 	volatile enc_t *encoder = &enc;
 	uint8_t bright = ram.brightness;
-	glcdSetFont( fixednums15x31 );
+	Ssd1306SetFont( fixednums15x31 );
 	
 	while (1)
 	{
@@ -925,10 +911,10 @@ uint8_t setBrightness			( void )
 		strcpy( output , tmp );
 		strcat( output , "   ");
 		
-		glcdPuts( output , 30 , 50 );
+		Ssd1306PutS( output , 30 , 50 );
 		
-		ssd1306SendCmd( SSD1306_CMD_SET_VCOM_DESELECT );
-		ssd1306SendCmd( bright );
+		Ssd1306SendCmd( SSD1306_CMD_SET_VCOM_DESELECT );
+		Ssd1306SendCmd( bright );
 		
 		if ( button.enter || flag.menueTimeout )
 		{
@@ -973,15 +959,15 @@ uint8_t showErrors				( void )
 {
 	#define OFFSET_NEW_LINE			8
 		
-	glcdSetFont( System5x7 );
-	glcdPuts( "-Error(s)" , 0 , 0 );
+	Ssd1306SetFont( System5x7 );
+	Ssd1306PutS( "-Error(s)" , 0 , 0 );
 	
 	while ( !button.enter )
 	{
- 		glcdPuts( errorGetById( &err , _ERROR_GLCD_I2C_ )	, 24 , 0 );
-  		glcdPuts( errorGetById( &err , _ERROR_RTC_I2C_  )	, 32 , 0 );
- 		glcdPuts( errorGetById( &err , _ERROR_SHT21_I2C_ )	, 40 , 0 );
-  		glcdPuts( errorGetById( &err , _ERROR_BMP180_I2C_)	, 48 , 0 );
+ 		Ssd1306PutS( errorGetById( &err , _ERROR_GLCD_I2C_ )	, 24 , 0 );
+  		Ssd1306PutS( errorGetById( &err , _ERROR_RTC_I2C_  )	, 32 , 0 );
+ 		Ssd1306PutS( errorGetById( &err , _ERROR_SHT21_I2C_ )	, 40 , 0 );
+  		Ssd1306PutS( errorGetById( &err , _ERROR_BMP180_I2C_)	, 48 , 0 );
 	}	
 	return 0;
 }
@@ -994,7 +980,7 @@ int main(void)
 	
 	eepReload();
 	i2c_init();
-	glcdInit();
+	Ssd1306Init();
 	bmp180_init( &bmp180 );	
 	errorInit( &err );
 	
@@ -1018,25 +1004,20 @@ int main(void)
 	*/
 	sei();
 	
-	glcdClear();
+	Ssd1306ClearScreen();
+	Ssd1306SendRam();
 	
 	button.enterRpt = 0;	
 	button.enter	= 0;
-
-// 	uint8_t ser[8] = "";
-// 	sht21GetSerialNumber ( ser );
-// 	sht21ShowSerialNumber( ser );
 		
-	glcdSetFont( (const __flash uint8_t*)&Arial14 );
-		
-// 	while (1)
-// 	{
-// 		Ssd1306PutChar( 'X' , 10 , 10 );
-// 		Ssd1306SendRam();
-// 	}
-	
-	
-		
+	Ssd1306SetFont( Arial_Black_16 );		
+			
+ 	while (1)
+ 	{
+ 		Ssd1306PutChar( '1' , 0 , 0 );
+ 		Ssd1306SendRam();
+ 	}
+			
     while (1) 
     {	
  		if ( button.enterRpt )
@@ -1044,7 +1025,8 @@ int main(void)
 			button.enterRpt = 0;
 			button.enter	= 0;
  			
-			glcdClear();
+			Ssd1306ClearScreen();
+			Ssd1306SendRam();
 			showMenue( menueStructMain , (enc_t*)&enc , sizeof(menueStructMain) / sizeof(menueStructMain[0]) );
  		}
 		
@@ -1052,14 +1034,14 @@ int main(void)
 		{
 			operating.dispAutoOff = 0;
 			flag.dispIsOff = 1;
-			ssd1306SendCmd( SSD1306_CMD_DISPLAY_OFF );
+			Ssd1306SendCmd( SSD1306_CMD_DISPLAY_OFF );
 		}
 		
 		if ( flag.dispIsOff && button.enter )
 		{
 			flag.dispIsOff = 0;
 			button.enter = 0;
-			ssd1306SendCmd( SSD1306_CMD_DISPLAY_ON );
+			Ssd1306SendCmd( SSD1306_CMD_DISPLAY_ON );
 		}
 		
 		if ( readSens.ready & 1 << RTC_IS_RDY_TO_RD )
@@ -1071,9 +1053,9 @@ int main(void)
 				
 		if ( readSens.ready & ( 1 << RTC_IS_RDY_TO_SHOW_TIME ) )
 		{					
-			glcdSetFont( fixednums15x31 );
-			glcdPuts( bcd_ttostr( rtc.hour , rtc.minute , rtc.second ) , 0 , 0 );
-	 
+			Ssd1306SetFont( fixednums15x31 );
+			Ssd1306PutString( bcd_ttostr( rtc.hour , rtc.minute , rtc.second ) , 0 , 0 );
+			Ssd1306SendRam();
 			readSens.ready &= ~( 1 << RTC_IS_RDY_TO_SHOW_TIME );	
 		}
 			

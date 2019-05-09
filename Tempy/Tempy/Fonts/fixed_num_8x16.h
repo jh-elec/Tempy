@@ -5,13 +5,13 @@
 const uint8_t __flash fixednums8x16[]=
 {
     0x16, 0x3A, // size
-    0x08, // width
+    0x08, // uiCharWidth
     0x0F, // height
     '*', // first char
     0x11, // char count	
 	
 	0x08, // offset
-	0x01, // fixed font or not (0x01 = fixed)
+	0x01, // fixed Font or not (0x01 = fixed)
 
 	/*
 	*	Leerzeichen ist hier ASCII = '*'! Tabelle folgt nicht der

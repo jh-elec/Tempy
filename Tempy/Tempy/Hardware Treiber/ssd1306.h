@@ -13,7 +13,7 @@
 #define SSD1306_ADDR							0x78
 
 
-#define SSD1306_LCD_WIDTH						128
+#define SSD1306_LCD_Width						128
 #define SSD1306_LCD_HEIGHT						64
 
 #define SSD1306_MODE_CMD						0x00
@@ -51,18 +51,18 @@ typedef struct
 	*	Nach dem Aufruf von (calcFontStart())
 	*	steht dort der Anfang des gesuchten Zeichens drinn
 	*/
-	uint16_t indexNum;
+	uint16_t uiIndexBegin;
 	
 	/*
 	*	Zeichenbreite des aktuell gelesenen Zeichens
 	*/
-	uint8_t  width;
+	uint8_t  uiCharWidth;
 	
 	/*
 	*	Vor dem Aufruf einer Grafik-Schreib-Funktion muss ein Font gewählt werden
 	*/
-	const uint8_t __flash *fontPtr;
-}font_t;
+	const uint8_t __flash *ptrFont;
+}Font_t;
 
 
 enum ssd1306_errors
@@ -93,24 +93,24 @@ enum ssd1306_errors
 extern uint8_t ssd1306Error;
 extern uint8_t ssd1306ErrCnt[ALL_ERRORS];
 
-void ssd1306SendCmd(uint8_t c);
+void Ssd1306SendCmd(uint8_t c);
 
-void ssd1306SendData( uint8_t data );
+void Ssd1306SendData( uint8_t data );
 
 
-void glcdInit(void);
+void Ssd1306Init(void);
 
-void glcdGoto( uint8_t y , uint8_t x );
+void Ssd1306Goto( uint8_t y , uint8_t x );
 
-void glcdClear( void );
+void Ssd1306Clear( void );
 
-void glcdSetFont(const uint8_t __flash *chooseFontPtr);
+void Ssd1306SetFont(const uint8_t __flash *chooseptrFont);
 
-void glcdPutc(char c, uint8_t y, uint8_t x);
+void Ssd1306PutC(char c, uint8_t y, uint8_t x);
 
-void glcdPuts(char *str, uint8_t y , uint8_t x);
+void Ssd1306PutS(char *str, uint8_t y , uint8_t x);
 
-void glcdPrintImage(const uint8_t *image, uint16_t sizeofimage, uint8_t y , uint8_t x);
+void Ssd1306PrintImage(const uint8_t *image, uint16_t sizeofimage, uint8_t y , uint8_t x);
 
 
 #define __USE_NEW_FUNCTIONS__
@@ -125,7 +125,9 @@ void Ssd1306DrawPixel( int16_t y , int16_t x );
 
 void Ssd1306ClearPixel( int16_t y , int16_t x );
 
-void Ssd1306PutChar( char c , uint8_t y , uint8_t x );
+void Ssd1306PutChar( char c , int16_t y , int16_t x );
+
+void Ssd1306PutString( char *str, int16_t y , int16_t x );
 
 void Ssd1306SendRam( void );
 

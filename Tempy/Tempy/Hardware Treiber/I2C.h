@@ -7,7 +7,7 @@
 #define I2C_READ		0x01
 #define I2C_WRITE		0x00
 
-#define I2C_F_SCL		100000UL // SCL frequency
+#define I2C_F_SCL		400000UL // SCL frequency
 #define I2C_PRESCALER	1
 #define I2C_TWBR		((((F_CPU / I2C_F_SCL) / I2C_PRESCALER) - 16 ) / 2)
 
