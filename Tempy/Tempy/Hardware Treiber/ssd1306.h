@@ -45,23 +45,40 @@
 #define SSD1306_ADDR_MODE_VERT					1
 #define SSD1306_ADDR_MODE_PAGE					2
 
+#define _FONT_LENGTH			0
+#define _FONT_FIXED_WIDTH		2
+#define _FONT_HEIGHT			3
+#define _FONT_FIRST_CHAR		4
+#define _FONT_CHAR_COUNT		5
+#define _FONT_WIDTH_TABLE		6
+
+#define IsFixedWidthFont( font ) (font[ _FONT_LENGTH ] == 0 && font[ _FONT_LENGTH + 1 ] == 0 )
+
+
+
 typedef struct
 {
 	/*
 	*	Nach dem Aufruf von (calcFontStart())
 	*	steht dort der Anfang des gesuchten Zeichens drinn
 	*/
-	uint16_t uiIndexBegin;
+	uint16_t uiIndex;
 	
 	/*
-	*	Zeichenbreite des aktuell gelesenen Zeichens
+	*	Zeichenbreite
 	*/
-	uint8_t  uiCharWidth;
+	uint16_t uiWidht;
 	
 	/*
-	*	Vor dem Aufruf einer Grafik-Schreib-Funktion muss ein Font gewählt werden
+	*	Zeichenhöhe 
 	*/
-	const uint8_t __flash *ptrFont;
+	uint16_t uiHeight;
+	
+	/*
+	*	Zeichenhöhe in Bytes
+	*/
+	uint8_t	uiHeightInBytes;
+	
 }Font_t;
 
 
@@ -104,7 +121,7 @@ void Ssd1306Goto( uint8_t y , uint8_t x );
 
 void Ssd1306Clear( void );
 
-void Ssd1306SetFont(const uint8_t __flash *chooseptrFont);
+void Ssd1306SetFont(const uint8_t __flash *ptrFnt);
 
 void Ssd1306PutC(char c, uint8_t y, uint8_t x);
 
@@ -117,18 +134,20 @@ void Ssd1306PrintImage(const uint8_t *image, uint16_t sizeofimage, uint8_t y , u
 
 #ifdef __USE_NEW_FUNCTIONS__
 
-void Ssd1306ClearScreen( void );
+Font_t		GetFont				( uint8_t c );
 
-void Ssd1306FillScreen( void );
+void		Ssd1306ClearScreen	( void );
 
-void Ssd1306DrawPixel( int16_t y , int16_t x );
+void		Ssd1306FillScreen	( void );
 
-void Ssd1306ClearPixel( int16_t y , int16_t x );
+void		Ssd1306DrawPixel	( uint8_t y , uint8_t x );
 
-void Ssd1306PutChar( char c , int16_t y , int16_t x );
+void		Ssd1306ClearPixel	( uint8_t y , uint8_t x );
 
-void Ssd1306PutString( char *str, int16_t y , int16_t x );
+uint16_t	Ssd1306PutChar		( char c , uint8_t y , uint8_t x );
 
-void Ssd1306SendRam( void );
+void		Ssd1306PutString	( char *str, uint8_t y , uint8_t x );
+
+void		Ssd1306SendRam		( void );
 
 #endif 

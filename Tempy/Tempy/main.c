@@ -971,7 +971,7 @@ uint8_t showErrors				( void )
 	}	
 	return 0;
 }
-
+volatile Font_t Font;
 
 int main(void)
 {
@@ -1011,11 +1011,15 @@ int main(void)
 	button.enter	= 0;
 		
 	Ssd1306SetFont( Arial_Black_16 );		
-			
+
  	while (1)
  	{
- 		Ssd1306PutChar( '1' , 0 , 0 );
- 		Ssd1306SendRam();
+ 		//Ssd1306PutChar( 'g' , 0 , 0 );
+		 //Ssd1306PutChar( 'g' , 10 , 10 );
+		 //Ssd1306PutChar( 'g' , 20 , 20 );
+		 Ssd1306PutChar( 'g' , 0 , 0 );
+ 		//Ssd1306PutString( "ggg" , 0 , 0 );
+		 Ssd1306SendRam();
  	}
 			
     while (1) 

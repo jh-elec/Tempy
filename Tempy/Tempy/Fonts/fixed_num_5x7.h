@@ -4,7 +4,7 @@
  * File Name           : System5x7.h
  * Date                : 28 Oct 2008
  * Font size in bytes  : 470
- * Font uiCharWidth          : 5
+ * Font uiWidht          : 5
  * Font height         : 7
  * Font first char     : 32
  * Font last char      : 127

@@ -4,8 +4,8 @@
 
 const uint8_t __flash fixednums15x31[] = 
 {
-    0x0, 0x0,	// size of zero indicates fixed uiCharWidth Font
-    15,			// uiCharWidth
+    0x0, 0x0,	// size of zero indicates fixed uiWidht Font
+    15,			// uiWidht
     31,			// height
     '*',		// first char (48)
     0x11,		// char count

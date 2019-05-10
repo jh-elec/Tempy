@@ -5,7 +5,7 @@
 const uint8_t __flash fixednums8x16[]=
 {
     0x16, 0x3A, // size
-    0x08, // uiCharWidth
+    0x08, // uiWidht
     0x0F, // height
     '*', // first char
     0x11, // char count	
