@@ -19,14 +19,15 @@
 
 static uint8_t DisplayRam[ ( SSD1306_LCD_Width * SSD1306_LCD_HEIGHT ) / 8 ] = "0xFF";
 
-uint8_t buff[3]			= "";
+static uint8_t buff[10]			= "";
 uint8_t ssd1306Error	= 0;
 
 uint8_t errTmp			= 0;
 uint8_t ssd1306ErrCnt[ALL_ERRORS];
 
-static const uint8_t __flash *_ptrFont = NULL;
+static Font_t Font;
 
+const uint8_t __flash *_ptrFont = NULL;
 
 
 static uint8_t Ssd1306Write( uint8_t *buff , uint16_t leng )
@@ -165,13 +166,11 @@ uint8_t GetFontHeight( const uint8_t __flash *ptrFont )
 	return ptrFont[ _FONT_HEIGHT ];
 }
 
-Font_t GetFont( uint8_t c )
+void GetFont( uint8_t c , Font_t *ptrFnt )
 {
-	Font_t Font;
-	
-	Font.uiWidht			= 0;
-	Font.uiHeight			= GetFontHeight( _ptrFont );
-	Font.uiHeightInBytes	= ( Font.uiHeight + 7 ) / 8; 
+	ptrFnt->uiWidht			= 0;
+	ptrFnt->uiHeight		= GetFontHeight( _ptrFont );
+	ptrFnt->uiHeightInBytes	= ( Font.uiHeight + 7 ) / 8; 
 
 	uint8_t uiFirstChar = _ptrFont[ _FONT_FIRST_CHAR ];
 	uint8_t uiCharCount = _ptrFont[ _FONT_CHAR_COUNT ];
@@ -180,8 +179,8 @@ Font_t GetFont( uint8_t c )
 
 	if ( IsFixedWidthFont( _ptrFont ) ) 
 	{
-		Font.uiWidht = _ptrFont[ _FONT_FIXED_WIDTH ];
-		Font.uiIndex = ( c * Font.uiHeightInBytes * Font.uiWidht + _FONT_WIDTH_TABLE );
+		ptrFnt->uiWidht = _ptrFont[ _FONT_FIXED_WIDTH ];
+		ptrFnt->uiIndex = ( c * ptrFnt->uiHeightInBytes * ptrFnt->uiWidht + _FONT_WIDTH_TABLE );
 	}else 
 	{
 		/*
@@ -192,7 +191,7 @@ Font_t GetFont( uint8_t c )
 		*/
 		for (uint8_t i = 0; i < c; i++) 
 		{
-			Font.uiIndex += _ptrFont[ _FONT_WIDTH_TABLE + i ];
+			ptrFnt->uiIndex += _ptrFont[ _FONT_WIDTH_TABLE + i ];
 		}
 		/*
 		* Calculate the offset of where the font data
@@ -206,15 +205,14 @@ Font_t GetFont( uint8_t c )
 		* The index is then adjusted to skip over the font width data
 		* and the font header information.
 		*/
-		Font.uiIndex = ( Font.uiIndex * Font.uiHeightInBytes + uiCharCount + _FONT_WIDTH_TABLE );
+		ptrFnt->uiIndex = ( ptrFnt->uiIndex * ptrFnt->uiHeightInBytes + uiCharCount + _FONT_WIDTH_TABLE );
 
 		/*
 		* Finally, fetch the width of our character
 		*/
-		Font.uiWidht = _ptrFont[ _FONT_WIDTH_TABLE + c ];
+		ptrFnt->uiWidht = _ptrFont[ _FONT_WIDTH_TABLE + c ];
 	}
-	
-	return Font;
+
 }
 
 void Ssd1306ClearScreen( void )
@@ -227,51 +225,24 @@ void Ssd1306FillScreen( void )
 	memset( DisplayRam , 0xFF , sizeof( DisplayRam ) );
 }
 
-void Ssd1306DrawPixel( uint8_t y , uint8_t x )
+void Ssd1306DrawPixel( uint16_t y , uint16_t x )
 {
 	 DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] |=  ( 1 << ( y & 7 ) );
 }
 
-void Ssd1306ClearPixel( uint8_t y , uint8_t x )
+void Ssd1306DrawByte( uint16_t y , uint16_t x , uint8_t Byte )
+{
+	DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] = Byte;
+}
+
+void Ssd1306ClearByte( uint16_t y , uint16_t x )
+{
+	DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] = 0;	
+}
+
+void Ssd1306ClearPixel( uint16_t y , uint16_t x )
 {
 	DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] &=  ~( 1 << ( y & 7 ) );
-}
-
-uint16_t Ssd1306PutChar( char c , uint8_t y , uint8_t x )
-{	
-	Font_t Font = GetFont( c );	
-	uint16_t uiLastWidht = 0;
-	
-	for ( uint16_t uiHeightInBytes = 0 ; uiHeightInBytes < Font.uiHeightInBytes ; uiHeightInBytes++ )
-	{
-		for ( uint16_t uiActualWidht = 0 ; uiActualWidht < Font.uiWidht ; uiActualWidht++ )
-		{
-			for ( uint8_t z = 0 ; z < 8 ; z++ )
-			{
-				if ( _ptrFont[Font.uiIndex + ( uiLastWidht + uiActualWidht ) ] & 1<<z )
-				{
-					Ssd1306DrawPixel( ( y + z ) + ( uiHeightInBytes * 128 ) , ( x + uiActualWidht ) + ( uiHeightInBytes * 128 ) );						
-				}else
-				{
-					Ssd1306ClearPixel( ( y + z ) + ( uiHeightInBytes * 128 ) , ( x + uiActualWidht ) + ( uiHeightInBytes * 128 ) );
-				}				
-			}
-		}
-		uiLastWidht+=Font.uiWidht;
-	}
-	
-	return Font.uiWidht;
-}
-
-void Ssd1306PutString( char *str, uint8_t y , uint8_t x )
-{	
-	uint16_t Space = 0;
-
-  	while (*str)
-  	{
-		uint16_t FontWidht = Ssd1306PutChar( *str++ , y , x + Space ); 
- 		Space += (FontWidht) + 10; // nächste Schreibposition anhand der größe vom Zeichen summieren.
-	 }
 }
 
 void Ssd1306SendRam( void )
@@ -293,4 +264,81 @@ void Ssd1306SendRam( void )
 	i2c_stop(); 
 	
 	sei();
+}
+
+void _ClearFont( Font_t *ptrFnt )
+{
+	ptrFnt->uiHeight = 0;
+	ptrFnt->uiHeightInBytes = 0;
+	ptrFnt->uiIndex = 0;
+	ptrFnt->uiWidht = 0;
+}
+
+void Ssd1306PutChar ( uint8_t c , uint8_t y , uint8_t x )
+{
+	uint8_t i , j , k , by , mask , tmpmask , pixels;
+	
+	_ClearFont( &Font );
+	GetFont( c , &Font );
+
+	for( k = 0 ; k < Font.uiHeightInBytes ; k++)
+	{
+		pixels = 8; // erstmal
+
+		if( k == Font.uiHeightInBytes - 1 ) // Im unteren Zeichenteil evtl. nur Restpixel zeichnen
+		{
+			by = Font.uiHeight % 8;
+			if( by != 0 ) 
+			{
+				pixels = by;
+			}
+		}
+
+		tmpmask = 0x01;//Bei D0 anfangen
+		if( pixels != 8 ) 
+		{
+			tmpmask <<= ( 8 - pixels ); // Restpixel sind verschoben !
+		}
+		 
+		uint16_t PosX = x;
+
+		for( i = 0 ; i < Font.uiWidht ; i++ ) //Über die Breite des Zeichens
+		{
+			by= _ptrFont[ Font.uiIndex++ ]; //Ein Byte des Zeichens holen
+
+			if( ( y % 8 ) !=0 || pixels != 8 )
+			{
+				mask = tmpmask;
+
+				for( j = 0 ; j < pixels ; j++ )
+				{
+					if ( by & mask )
+					{
+						Ssd1306DrawPixel( y + j, PosX );
+					}
+					mask<<=1; //Nächstes Bit
+				}//for j
+			}
+			else
+			{
+				Ssd1306DrawByte( y , PosX , by );
+			}
+
+			PosX++;
+		}//for i
+
+		if( ( y % 8 ) != 0 || pixels != 8 )
+		{
+			for( j = 0 ; j < pixels ; j++ ) // virtual spacing Spalte, 1 Leerpixel zeichnen
+			{
+				Ssd1306ClearPixel( y + j , PosX );
+			}//for j
+		}
+		else
+		{
+			Ssd1306ClearByte( y , PosX );
+		}
+
+		y += 8 ;
+	}//for k
 }
