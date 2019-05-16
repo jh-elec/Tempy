@@ -20,10 +20,7 @@ const uint8_t __flash  System5x7[]=
     0x07, // height
     0x20, // first char
     0x7f, // char count
-    
-	0x08, // offset
-	0x01, // fixed Font or not (0x01 = fixed)	
-		
+    	
     // Fixed Width; char Width table not used !!!!
     // Font data
     0x00, 0x00, 0x00, 0x00, 0x00,// (space)

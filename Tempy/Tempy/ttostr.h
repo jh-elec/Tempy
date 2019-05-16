@@ -12,7 +12,14 @@
 #define F_CPU 8000000
 #endif
 
-
+enum TTOSTR_OPTIONS
+{
+	TTOSTR_HH,
+	TTOSTR_MM,
+	TTOSTR_SS,
+	TTOSTR_HH_MM,
+	TTOSTR_HH_MM_SS,
+};
 
 enum Days	{
 				So = 1,
@@ -35,11 +42,11 @@ enum Days	{
 
 /*****************************************************************
 * description : make a string from uint8_t values (BCD Format!)
-* parameter : hours, minutes, seconds
+* parameter : hours, minutes, seconds , lenght of the string
 * returns : address of time string
 * sample : 	lcd_puts(ttostr(12,05,01));
 *****************************************************************/
-char *bcd_ttostr(uint8_t hour, uint8_t min, uint8_t sec);
+char *bcd_ttostr( uint8_t Hour , uint8_t Minute , uint8_t Secound , enum TTOSTR_OPTIONS Options );
 
 /*****************************************************************
 * description : make a string from uint8_t values (DEC Format!)

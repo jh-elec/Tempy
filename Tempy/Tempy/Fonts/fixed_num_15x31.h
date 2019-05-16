@@ -10,9 +10,6 @@ const uint8_t __flash fixednums15x31[] =
     '*',		// first char (48)
     0x11,		// char count
 
-	0x08, // offset
-	0x01, // fixed Font or not (0x01 = fixed)
-
 	/*
 	*	Leerzeichen ist hier ASCII = '*'! Tabelle folgt nicht der
 	*	Genormten "ASCII" Tabelle.

@@ -19,66 +19,28 @@
 
 static uint8_t DisplayRam[ ( SSD1306_LCD_Width * SSD1306_LCD_HEIGHT ) / 8 ] = "0xFF";
 
-static uint8_t buff[10]			= "";
-uint8_t ssd1306Error	= 0;
-
-uint8_t errTmp			= 0;
-uint8_t ssd1306ErrCnt[ALL_ERRORS];
+static uint8_t buff[3]			= "";
 
 static Font_t Font;
 
 const uint8_t __flash *_ptrFont = NULL;
 
 
-static uint8_t Ssd1306Write( uint8_t *buff , uint16_t leng )
+static inline uint8_t	Ssd1306Write( uint8_t *buff , uint16_t leng )
 {
-	cli();
+	i2c_start_wait( SSD1306_ADDR + I2C_WRITE );
 	
-	if ( i2c_start( SSD1306_ADDR + I2C_WRITE ) )
-	{
-		ssd1306Error |= ( 1 << START_NOT_RDY );
-		ssd1306ErrCnt[START_NOT_RDY]++;
-		i2c_stop();
-		sei();
-		return 1;
-	}
-
 	for ( uint16_t i = 0 ; i < leng ; i++ )
 	{
-		if ( leng == 1 )
-		{
-			errTmp = i2c_write( *buff );
-			if ( errTmp )
-			{
-				errTmp = 0;
-				ssd1306Error |= ( 1 << TX_BYTE );
-				ssd1306ErrCnt[TX_BYTE]++;
-			}
-			
-			i2c_stop();
-			sei();
-			
-			return 0;
-		}
-		else
-		{
-			errTmp = i2c_write( *buff++ );
-			if ( errTmp )
-			{
-				errTmp = 0;
-				ssd1306Error |= ( 1 << TX_BYTE );
-				ssd1306ErrCnt[TX_BYTE]++;
-			}
-		}
+		i2c_write( *buff++ );
 	}
-	i2c_stop();
 
-	sei();
+	i2c_stop();
 	
 	return 0;
 }
 
-static inline uint8_t swapBits(uint8_t byte)
+static inline uint8_t	_SwapBits(uint8_t byte)
 {
 	uint8_t ret = 0;
 	
@@ -91,7 +53,7 @@ static inline uint8_t swapBits(uint8_t byte)
 	return ret;
 }
 
-void Ssd1306SendCmd(uint8_t c)
+static inline void		_Ssd1306SendCmd(uint8_t c)
 {
 	buff[0] = SSD1306_MODE_CMD;
 	buff[1] = c;
@@ -99,7 +61,7 @@ void Ssd1306SendCmd(uint8_t c)
 	Ssd1306Write( buff , 2 );
 }
 
-void Ssd1306SendData( uint8_t data )
+static inline void		_Ssd1306SendData( uint8_t data )
 {
 	buff[0] = SSD1306_MODE_DATA;
 	buff[1] = data;
@@ -107,166 +69,7 @@ void Ssd1306SendData( uint8_t data )
 	Ssd1306Write( buff , 2 );
 }
 
-void Ssd1306Init(void)
-{
-	static uint8_t buff[] =
-	{
-		0xAE,			// Display OFF (sleep mode)
-		0x20, 
-	
-		0b00,			// Set Memory Addressing Mode
-						// 00=Horizontal Addressing Mode; 01=Vertical Addressing Mode;
-						// 10=Page Addressing Mode (RESET); 11=Invalid
-						
-		0xB0,			// Set Page Start Address for Page Addressing Mode, 0-7
-		0xC8,			// Set COM Output Scan Direction
-		0x00,			// --set low column address
-		0x10,			// --set high column address
-		0x40,			// --set start line address
-		0x81, 255,		// Set contrast control register
-		0xA1,			// Set Segment Re-map. A0=address mapped; A1=address 127 mapped.
-		0xA6,			// Set display mode. A6=Normal; A7=Inverse
-		0xA8, 0x3F,		// Set multiplex ratio(1 to 64)
-		0xA4,			// Output RAM to Display
-						// 0xA4=Output follows RAM content; 0xA5,Output ignores RAM content
-		0xD3, 0x00,		// Set display offset. 00 = no offset
-		0xD5,			// --set display clock divide ratio/oscillator frequency
-		0xF0,			// --set divide ratio
-		0xD9, 0,		// Set pre-charge period
-		0xDA, 0x12,		// Set com pins hardware configuration
-		0xDB,			// --set vcomh
-		0x20,			// 0x20,0.77xVcc
-		0x8D, 0x04,		// Set DC-DC enable
-		0xAF,			// Display ON in normal mode
-	};
-
-	for (uint8_t i = 0 ; i < sizeof(buff) ; i++ )
-	{
-		Ssd1306SendCmd( buff[i] );
-	}
-	
-	Ssd1306ClearScreen();
-}
-
-void Ssd1306Goto( uint8_t y , uint8_t x )
-{
-	Ssd1306SendCmd( SSD1306_MODE_CMD );	
-	Ssd1306SendCmd( SSD1306_CMD_PAGE_START_ADDR + y );
-	Ssd1306SendCmd( ( ( x & 0xF0) >> 4 ) | 0x10 );
-	Ssd1306SendCmd( x & 0x0F );
-}
-
-void Ssd1306SetFont( const uint8_t __flash *ptrFnt )
-{
-	_ptrFont = ptrFnt;
-}
-
-uint8_t GetFontHeight( const uint8_t __flash *ptrFont )	
-{
-	return ptrFont[ _FONT_HEIGHT ];
-}
-
-void GetFont( uint8_t c , Font_t *ptrFnt )
-{
-	ptrFnt->uiWidht			= 0;
-	ptrFnt->uiHeight		= GetFontHeight( _ptrFont );
-	ptrFnt->uiHeightInBytes	= ( Font.uiHeight + 7 ) / 8; 
-
-	uint8_t uiFirstChar = _ptrFont[ _FONT_FIRST_CHAR ];
-	uint8_t uiCharCount = _ptrFont[ _FONT_CHAR_COUNT ];
-	
-	c -= uiFirstChar;
-
-	if ( IsFixedWidthFont( _ptrFont ) ) 
-	{
-		ptrFnt->uiWidht = _ptrFont[ _FONT_FIXED_WIDTH ];
-		ptrFnt->uiIndex = ( c * ptrFnt->uiHeightInBytes * ptrFnt->uiWidht + _FONT_WIDTH_TABLE );
-	}else 
-	{
-		/*
-		* Because there is no table for the offset of where the data
-		* for each character glyph starts, run the table and add up all the
-		* widths of all the characters prior to the character we
-		* need to locate.
-		*/
-		for (uint8_t i = 0; i < c; i++) 
-		{
-			ptrFnt->uiIndex += _ptrFont[ _FONT_WIDTH_TABLE + i ];
-		}
-		/*
-		* Calculate the offset of where the font data
-		* for our character starts.
-		* The index value from above has to be adjusted because
-		* there is potentialy more than 1 byte per column in the glyph,
-		* when the characgter is taller than 8 bits.
-		* To account for this, index has to be multiplied
-		* by the height in bytes because there is one byte of font
-		* data for each vertical 8 pixels.
-		* The index is then adjusted to skip over the font width data
-		* and the font header information.
-		*/
-		ptrFnt->uiIndex = ( ptrFnt->uiIndex * ptrFnt->uiHeightInBytes + uiCharCount + _FONT_WIDTH_TABLE );
-
-		/*
-		* Finally, fetch the width of our character
-		*/
-		ptrFnt->uiWidht = _ptrFont[ _FONT_WIDTH_TABLE + c ];
-	}
-
-}
-
-void Ssd1306ClearScreen( void )
-{
-	memset( DisplayRam , 0x00 , sizeof( DisplayRam ) );
-}
-
-void Ssd1306FillScreen( void )
-{
-	memset( DisplayRam , 0xFF , sizeof( DisplayRam ) );
-}
-
-void Ssd1306DrawPixel( uint16_t y , uint16_t x )
-{
-	 DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] |=  ( 1 << ( y & 7 ) );
-}
-
-void Ssd1306DrawByte( uint16_t y , uint16_t x , uint8_t Byte )
-{
-	DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] = Byte;
-}
-
-void Ssd1306ClearByte( uint16_t y , uint16_t x )
-{
-	DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] = 0;	
-}
-
-void Ssd1306ClearPixel( uint16_t y , uint16_t x )
-{
-	DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] &=  ~( 1 << ( y & 7 ) );
-}
-
-void Ssd1306SendRam( void )
-{
-	Ssd1306SendCmd( SSD1306_CMD_COLUMN_LOW_ADDR  | 0x0 );
-	Ssd1306SendCmd( SSD1306_CMD_COLUMN_HIGH_ADDR | 0x0 );
-	Ssd1306SendCmd( SSD1306_CMD_SET_START_LINE	 | 0x0 );
-
-	cli();
-	
-	i2c_start( SSD1306_ADDR + I2C_WRITE );
-	
-	i2c_write( SSD1306_MODE_DATA ); // Data is comming..
-	
-	for ( uint16_t ui = 0 ; ui < sizeof( DisplayRam ) ; ui++ )
-	{
-		i2c_write( DisplayRam[ui] );
-	}
-	i2c_stop(); 
-	
-	sei();
-}
-
-void _ClearFont( Font_t *ptrFnt )
+static inline void		_ClearFont( Font_t *ptrFnt )
 {
 	ptrFnt->uiHeight = 0;
 	ptrFnt->uiHeightInBytes = 0;
@@ -274,71 +77,293 @@ void _ClearFont( Font_t *ptrFnt )
 	ptrFnt->uiWidht = 0;
 }
 
-void Ssd1306PutChar ( uint8_t c , uint8_t y , uint8_t x )
+static inline uint8_t	_GetFontHeight( const uint8_t __flash *ptrFont )
 {
-	uint8_t i , j , k , by , mask , tmpmask , pixels;
+	return ptrFont[ _FONT_HEIGHT ];
+}
+
+static inline void		_GetFont( uint8_t c , Font_t *ptrFnt )
+{
+	ptrFnt->uiWidht			= 0;
+	ptrFnt->uiHeight		= _GetFontHeight( _ptrFont );
+	ptrFnt->uiHeightInBytes	= ( Font.uiHeight + 7 ) / 8; 
+
+	uint8_t uiFirstChar = _ptrFont[ _FONT_FIRST_CHAR ];
+	uint8_t uiCharCount = _ptrFont[ _FONT_CHAR_COUNT ];
+	
+	c -= uiFirstChar;
+
+	if ( _IsFixedWidthFont( _ptrFont ) ) 
+	{
+		ptrFnt->uiWidht = _ptrFont[ _FONT_FIXED_WIDTH ];
+		ptrFnt->uiIndex = ( c * ptrFnt->uiHeightInBytes * ptrFnt->uiWidht + _FONT_WIDTH_TABLE );
+	}else 
+	{
+		for (uint8_t i = 0; i < c; i++) 
+		{
+			ptrFnt->uiIndex += _ptrFont[ _FONT_WIDTH_TABLE + i ];
+		}
+
+		ptrFnt->uiIndex = ( ptrFnt->uiIndex * ptrFnt->uiHeightInBytes + uiCharCount + _FONT_WIDTH_TABLE );
+		ptrFnt->uiWidht = _ptrFont[ _FONT_WIDTH_TABLE + c ];
+	}
+
+}
+
+
+
+
+void		Ssd1306Init(void)
+{
+//  Ssd1306DisplayState( DISPLAY_OFF );
+// 	static uint8_t buff[] =
+// 	{
+// 		0x20, 
+// 	
+// 		0b00,			// Set Memory Addressing Mode
+// 						// 00=Horizontal Addressing Mode; 01=Vertical Addressing Mode;
+// 						// 10=Page Addressing Mode (RESET); 11=Invalid
+// 						
+// 		0xB0,			// Set Page Start Address for Page Addressing Mode, 0-7
+// 		0xC8,			// Set COM Output Scan Direction
+// 		0x00,			// --set low column address
+// 		0x10,			// --set high column address
+// 		0x40,			// --set start line address
+// 		0x81, 255,		// Set contrast control register
+// 		0xA1,			// Set Segment Re-map. A0=address mapped; A1=address 127 mapped.
+// 		0xA6,			// Set display mode. A6=Normal; A7=Inverse
+// 		0xA8, 0x3F,		// Set multiplex ratio(1 to 64)
+// 		0xA4,			// Output RAM to Display
+// 						// 0xA4=Output follows RAM content; 0xA5,Output ignores RAM content
+// 		0xD3, 0x00,		// Set display offset. 00 = no offset
+// 		0xD5,			// --set display clock divide ratio/oscillator frequency
+// 		0xF0,			// --set divide ratio
+// 		0xD9, 0,		// Set pre-charge period
+// 		0xDA, 0x12,		// Set com pins hardware configuration
+// 		0xDB,			// --set vcomh
+// 		0x20,			// 0x20,0.77xVcc
+// 		0x8D, 0x04,		// Set DC-DC enable
+// 	}; 28 Parameter
+// 	Ssd1306DisplayState( DISPLAY_ON );
+
+
+	Ssd1306DisplayState( DISPLAY_OFF );
+
+	uint8_t buff[] =
+	{
+		SSD1306_SETMULTIPLEX		, 0x3F	,
+		SSD1306_SETDISPLAYOFFSET	, 0x0	,
+		SSD1306_SETSTARTLINE | 0x0	, 
+		SSD1306_MEMORYMODE			,  0x00 ,
+		SSD1306_SEGREMAP | 0x1		,
+		SSD1306_COMSCANDEC			,
+		SSD1306_SETCOMPINS			, 0x12	,
+		SSD1306_SETCONTRAST			, 0xff	,
+		SSD1306_DISPLAYALLON_RESUME ,
+		SSD1306_NORMALDISPLAY		,
+		SSD1306_SETDISPLAYCLOCKDIV	, 0x80	,
+		SSD1306_CHARGEPUMP			, 0x14		
+	}; // 19 Parameter
+	
+	Ssd1306DisplayState( DISPLAY_ON );
+
+	for (uint8_t i = 0 ; i < sizeof(buff) ; i++ )
+	{
+		_Ssd1306SendCmd( buff[i] );
+	}
+}
+
+void		Ssd1306DisplayState( enum Ssd1306_Enum Function )
+{
+	switch ( Function )
+	{
+		case DISPLAY_OFF:
+		{
+			_Ssd1306SendCmd( SSD1306_CMD_DISPLAY_OFF );
+		}break;
+		
+		case DISPLAY_ON:
+		{
+			_Ssd1306SendCmd( SSD1306_CMD_DISPLAY_ON );
+		}break;
+	}	
+};
+
+void		Ssd1306Goto( uint8_t y , uint8_t x )
+{
+	_Ssd1306SendCmd( SSD1306_CMD_PAGE_START_ADDR + y );
+	_Ssd1306SendCmd( ( ( x & 0xF0) >> 4 ) | 0x10 );
+	_Ssd1306SendCmd( x & 0x0F );
+}
+
+void		Ssd1306SetFont( const uint8_t __flash *ptrFnt )
+{
+	_ptrFont = ptrFnt;
+}
+
+void		Ssd1306ClearScreen( void )
+{
+	memset( DisplayRam , 0x00 , sizeof( DisplayRam ) );
+}
+
+void		Ssd1306FillScreen( void )
+{
+	memset( DisplayRam , 0xFF , sizeof( DisplayRam ) );
+}
+
+void		Ssd1306DrawPixel( uint16_t y , uint16_t x )
+{
+	 DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] |=  ( 1 << ( y & 7 ) );
+}
+
+void		Ssd1306DrawByte( uint16_t y , uint16_t x , uint8_t Byte )
+{
+	DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] = Byte;
+}
+
+void		Ssd1306ClearByte( uint16_t y , uint16_t x )
+{
+	DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] = 0;	
+}
+
+void		Ssd1306ClearPixel( uint16_t y , uint16_t x )
+{
+	DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] &=  ~( 1 << ( y & 7 ) );
+}
+
+void		Ssd1306SendRam( void )
+{
+	uint8_t buff[] =
+	{
+		SSD1306_MODE_CMD ,
+		SSD1306_CMD_SET_COLUMN_ADDR,
+		0x00,
+		0x7F,
+		SSD1306_CMD_SET_PAGE_ADDR,
+		0x00,
+		0x07,
+	};
+	
+	Ssd1306Write( buff , sizeof( buff ) );
+
+	i2c_start_wait( SSD1306_ADDR + I2C_WRITE );
+ 	i2c_write( SSD1306_MODE_DATA ); // Data is comming..
+ 	for ( uint16_t ui = 0 ; ui < sizeof( DisplayRam ) ; ui++ )
+ 	{
+ 		i2c_write( DisplayRam[ui] );
+ 	}
+ 	i2c_stop();
+}
+
+uint16_t	Ssd1306PutChar( uint8_t c , uint16_t y , uint16_t x )
+{
+	uint16_t i;
+	uint8_t FontPixelByte , mask , tmpmask , pixels , k , j ;
 	
 	_ClearFont( &Font );
-	GetFont( c , &Font );
+	_GetFont( c , &Font );
 
-	for( k = 0 ; k < Font.uiHeightInBytes ; k++)
+	if ( _IsFixedWidthFont(_ptrFont ) )
 	{
-		pixels = 8; // erstmal
-
-		if( k == Font.uiHeightInBytes - 1 ) // Im unteren Zeichenteil evtl. nur Restpixel zeichnen
+		uint16_t uiLastWidht = 0;
+	
+		for ( uint8_t uiHeightInBytes = 0 ; uiHeightInBytes < Font.uiHeightInBytes ; uiHeightInBytes++ )
 		{
-			by = Font.uiHeight % 8;
-			if( by != 0 ) 
+			for ( uint16_t uiActualWidht = 0 ; uiActualWidht < Font.uiWidht ; uiActualWidht++ )
 			{
-				pixels = by;
-			}
-		}
-
-		tmpmask = 0x01;//Bei D0 anfangen
-		if( pixels != 8 ) 
-		{
-			tmpmask <<= ( 8 - pixels ); // Restpixel sind verschoben !
-		}
-		 
-		uint16_t PosX = x;
-
-		for( i = 0 ; i < Font.uiWidht ; i++ ) //Über die Breite des Zeichens
-		{
-			by= _ptrFont[ Font.uiIndex++ ]; //Ein Byte des Zeichens holen
-
-			if( ( y % 8 ) !=0 || pixels != 8 )
-			{
-				mask = tmpmask;
-
-				for( j = 0 ; j < pixels ; j++ )
+				for ( uint8_t z = 0 ; z < 8 ; z++ )
 				{
-					if ( by & mask )
+					if ( _ptrFont[ Font.uiIndex + ( uiLastWidht + uiActualWidht ) ] & 1<<z )
 					{
-						Ssd1306DrawPixel( y + j, PosX );
+						Ssd1306DrawPixel( ( y + z ) + ( uiHeightInBytes * 128 ) , ( x + uiActualWidht ) + ( uiHeightInBytes * 128 ) );
+					}else
+					{
+						Ssd1306ClearPixel( ( y + z ) + ( uiHeightInBytes * 128 ) , ( x + uiActualWidht ) + ( uiHeightInBytes * 128 ) );
 					}
-					mask<<=1; //Nächstes Bit
+				}
+			}
+			uiLastWidht+=Font.uiWidht;
+		}
+	}
+	else
+	{
+		for( k = 0 ; k < Font.uiHeightInBytes ; k++)
+		{
+			pixels = 8; // erstmal
+
+			if( k == Font.uiHeightInBytes - 1 ) // Im unteren Zeichenteil evtl. nur Restpixel zeichnen
+			{
+				FontPixelByte = Font.uiHeight % 8;
+				if( FontPixelByte != 0 ) 
+				{
+					pixels = FontPixelByte;
+				}
+			}
+
+			tmpmask = 0x01;//Bei D0 anfangen
+			if( pixels != 8 ) 
+			{
+				tmpmask <<= ( 8 - pixels ); // Restpixel sind verschoben !
+			}
+		 
+			uint16_t PosX = x;
+
+			for( i = 0 ; i < Font.uiWidht ; i++ ) //Über die Breite des Zeichens
+			{
+				FontPixelByte = _ptrFont[ Font.uiIndex++ ]; //Ein Byte des Zeichens holen
+
+				if( ( y % 8 ) != 0 || pixels != 8 )
+				{
+					mask = tmpmask;
+
+					for( j = 0 ; j < pixels ; j++ )
+					{
+						if ( FontPixelByte & mask )
+						{
+							Ssd1306DrawPixel( y + j, PosX );
+						}
+						else
+						{
+							Ssd1306ClearPixel( y + j, PosX );
+						}
+						
+						mask<<=1; //Nächstes Bit
+						
+					}//for j
+				}
+				else
+				{
+					Ssd1306DrawByte( y , PosX , FontPixelByte );
+				}
+
+				PosX++;
+			}//for i
+
+			if( ( y % 8 ) != 0 || pixels != 8 )
+			{
+				for( j = 0 ; j < pixels ; j++ ) // virtual spacing Spalte, 1 Leerpixel zeichnen
+				{
+					Ssd1306ClearPixel( y + j , PosX );
 				}//for j
 			}
 			else
 			{
-				Ssd1306DrawByte( y , PosX , by );
+				Ssd1306ClearByte( y , PosX );
 			}
 
-			PosX++;
-		}//for i
+			y += 8 ;
+		}//for k		
+	}
+	
+	return ( Font.uiWidht + 1 );
+}
 
-		if( ( y % 8 ) != 0 || pixels != 8 )
-		{
-			for( j = 0 ; j < pixels ; j++ ) // virtual spacing Spalte, 1 Leerpixel zeichnen
-			{
-				Ssd1306ClearPixel( y + j , PosX );
-			}//for j
-		}
-		else
-		{
-			Ssd1306ClearByte( y , PosX );
-		}
-
-		y += 8 ;
-	}//for k
+void		Ssd1306PutString( char *msg , uint8_t y , uint8_t x )
+{
+	uint16_t Width = 0;
+	
+	while( *msg )
+	{
+		Width += Ssd1306PutChar( *msg++ , y , x + Width );
+	}
 }

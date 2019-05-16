@@ -233,6 +233,15 @@ int32_t		tempRaw = 0;
 uint8_t secoundCmp = 0;
 uint8_t eepInit EEMEM;
 
+void clearLine					( uint8_t PosY_Page )
+{
+	for ( uint8_t ui = 0 ; ui < 128 ; ui++ )
+	{
+		Ssd1306ClearByte( ( PosY_Page * 8 ) , ui );
+	}
+}
+
+
 inline void u16Str				( uint16_t u16 , char *str )
 {
 	str[0] = ( ( u16 / 10000 ) % 10 ) + '0';
@@ -326,13 +335,11 @@ uint8_t cnfgTime_				( uint8_t *buff )
 	buff[TIME_SECOUNDS]	= bcdToDec(rtc.second);
 	
 	Ssd1306SetFont( System5x7 );
-	//Ssd1306Clear();
-	//Ssd1306PutS("-Uhrzeit stellen.." , 0 , 0 );
 	Ssd1306PutString("-Uhrzeit stellen.." , 0 , 0 );
 	Ssd1306SetFont( fixednums15x31 );
 
 	
-	//Ssd1306PutS( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
+	//Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
 	Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
 		
     for ( uint8_t i = 0 ; i < 3 && ( ! ( flag.menueTimeout ) )  ; i++ )
@@ -375,11 +382,11 @@ uint8_t cnfgTime_				( uint8_t *buff )
 			{
 				case 0:
 				{
-					//Ssd1306PutS( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
+					//Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
 					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
 					Ssd1306SendRam();
 					_delay_ms( 100 );
-					//Ssd1306PutS( dec_ttostr( 0xFF , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );		
+					//Ssd1306PutString( dec_ttostr( 0xFF , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );		
 					Ssd1306PutString( dec_ttostr( 0xFF , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
 					Ssd1306SendRam();
 					_delay_ms( 100 );
@@ -387,17 +394,17 @@ uint8_t cnfgTime_				( uint8_t *buff )
 					
 				case 1:
 				{
-					Ssd1306PutS( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );
+					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );
 					_delay_ms( 100 );
-					Ssd1306PutS( dec_ttostr( buff[TIME_HOUR] , 0xFF , buff[TIME_SECOUNDS] ) , 25 , 0 );
+					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , 0xFF , buff[TIME_SECOUNDS] ) , 25 , 0 );
 					_delay_ms( 100 );				
 				}break;
 					
 				case 2:
 				{
-					Ssd1306PutS( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );
+					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );
 					_delay_ms( 100 );
-					Ssd1306PutS( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , 0xFF ) , 25 , 0 );
+					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , 0xFF ) , 25 , 0 );
 					_delay_ms( 100 );				
 				}break;
 			}
@@ -496,41 +503,37 @@ uint8_t showMenue				(menue_t *m, enc_t *enc, size_t menueLen)
 			tim.mil = 0;
 		}
 		
+		Ssd1306ClearScreen();
+		
 		/*
 		*	Menü Name
 		*/
-		Ssd1306PutS( (char*)m[0].Name , 0 , 0 );	
-		//Ssd1306PutString( (char*)m[0].Name , 0 , 0 );	
+		Ssd1306PutString( (char*)m[0].Name , 0 , 0 );	
+	
 	
 		/*
 		*	Softwareversion
 		*/
-		Ssd1306PutS( buildVer() , 60 , 0 );
-		//Ssd1306PutString( buildVer() , 60 , 0 );
-	
+		Ssd1306PutString( buildVer() , 50 , 0 );
+
 		for ( y = 2 ; y < 6 ; y++ )
 		{
 			menueEntry = pageStart + ( y - 1 );
-			Ssd1306Goto( y , 0 );
-			for ( uint8_t i = 0 ; i < 60 ; i++ )
-			{
-				Ssd1306SendData( 0x00 );
-			}
 			
 			if ( menueEntry < menueLen )
 			{
 				if ( menueEntry == enc->result )
 				{	
 					retCursor = enc->result;
-					Ssd1306PutS( "->" , y * 8 , 0 );
-					Ssd1306PutS( (char*)m[menueEntry].Name , y * 8 , 10 );
+					Ssd1306PutString( "->" , y * 8 , 0 );
+					Ssd1306PutString( (char*)m[menueEntry].Name , y * 8  , 10 );
 				}
 				else
-				{
-					Ssd1306PutS( (char*)m[menueEntry].Name , y * 8 , 0 );
+				{					
+					Ssd1306PutString( (char*)m[menueEntry].Name , y * 8 , 0 );
 				}		
 			}
-		}
+		}Ssd1306SendRam();
 	
 		if ( button.enter )
 		{	
@@ -538,7 +541,8 @@ uint8_t showMenue				(menue_t *m, enc_t *enc, size_t menueLen)
 			button.enterRpt = 0;
 			flag.menueTimeout = 0;	
 				
-			//Ssd1306Clear();
+			Ssd1306ClearScreen();
+			Ssd1306SendRam();
 									
 			/*
 			*	Funktion aufrufen die für diesen Menüpunkt
@@ -560,13 +564,15 @@ uint8_t showMenue				(menue_t *m, enc_t *enc, size_t menueLen)
 			flag.menueTimeout = 0;
 			button.enter = 0;
 			button.enterRpt = 0;
-			//Ssd1306Clear();
+			Ssd1306ClearScreen();
+			Ssd1306SendRam();
 
 			enc->result = m[retCursor].cursPos;						
 		}		
 	}	
 	
-//	Ssd1306Clear();
+	Ssd1306ClearScreen();
+	Ssd1306SendRam();
 	showNewValues = 0; showNewValues_ = 1;	
 	return 0;
 }
@@ -583,7 +589,7 @@ uint8_t reboot					( void )
 //	Ssd1306Clear();
 	
 	Ssd1306SetFont( Arial_Black_16 );
-	Ssd1306PutS( "Reboot.." , 25 , 0 );	
+	Ssd1306PutString( "Reboot.." , 25 , 0 );	
 	
 	_delay_ms(2500);
 	
@@ -593,14 +599,6 @@ uint8_t reboot					( void )
 	return 0;	
 }
 
-void clearLine					( uint8_t posx )
-{	
-	Ssd1306Goto( posx , 0);
-	for ( uint8_t i = 0 ; i < 128 ; i++ )
-	{
-		Ssd1306SendData( 0x00 );
-	}
-}
 
 
 
@@ -612,12 +610,12 @@ void refreshDisplay				( void )
 	
 	if ( readSens.ready & 1<<SENSORS_READY )
 	{
-		sht21Read( &temp_ , &humidity_ );
-		pressRaw = bmp180_get_uncomp_pressure();
-		pressRaw = bmp180_get_pressure( pressRaw );
-	
-		tempRaw = bmp180_get_uncomp_temperature();
-		tempRaw = bmp180_get_temperature( tempRaw );
+ 		Sht21Read( &temp_ , &humidity_ );
+ 		pressRaw = bmp180_get_uncomp_pressure();
+ 		pressRaw = bmp180_get_pressure( pressRaw );
+ 	
+ 		tempRaw = bmp180_get_uncomp_temperature();
+ 		tempRaw = bmp180_get_temperature( tempRaw );
 				
 		if ( avg++ == MEASUREMENT_AVERAGE )
 		{	
@@ -686,23 +684,19 @@ void refreshDisplay				( void )
 			strcpy( output , "Luftdruck: " );
 			strcat( output , tmp );
 			strcat( output , " hpa");
-			Ssd1306PutString(output , 33 , 0 );
+			Ssd1306PutString( output , 35 , 0 );
 			
 			itoa( readSens.processValue.sht21.humidity , tmp , 10 );
 			strcpy( output , "Luftfeu. : ");
 			strcat(output  , tmp );
 			strcat(output  , " % ");
-			Ssd1306PutString(output, 40 , 0 );
+			Ssd1306PutString( output, 45 , 0 );
 			
 			itoa( readSens.processValue.sht21.temp , tmp , 10 );
 			strcpy(output , "Temp.[1] : ");
 			strcat( output , tmp );
 			strcat(output , " Cel. " );
-			Ssd1306PutString( output , 48 , 0 );
-			
-			strcpy(output , "Error(s) : ");
-			strcat( output , errorGetById( &err , _ERROR_GLCD_I2C_ ) );
-			Ssd1306PutString( output , 56 , 0 );
+			Ssd1306PutString( output , 55 , 0 );
 			
 			Ssd1306SendRam();
 		}
@@ -710,7 +704,7 @@ void refreshDisplay				( void )
 	else
 	{
  		Ssd1306SetFont( System5x7 );
- 		Ssd1306PutString("Scanning now.." , 50 , 20 );
+ 		Ssd1306PutString( "Scanning now.." , 50 , 20 );
 		Ssd1306SendRam();
 		clearOld = 0 ; clearNew = 1;
 	}
@@ -743,19 +737,19 @@ uint8_t showMinMaxValues		( minMax_t *mm , uint8_t pos )
 	*/
 	strcpy	( output , mm->nameOfSensor );
 	strcat	( output , " [max/min]");
-	Ssd1306PutS( output , 0 , 0);
+	Ssd1306PutString( output , 0 , 0);
 
 	strcpy	( output , mm->nameOfValue );
 	strcat	( output , "[max].: ");
 	itoa	( mm->max , tmp , 10 );	
 	strcat	( output , tmp );		
-	Ssd1306PutS( output , pos , 0 );
+	Ssd1306PutString( output , pos , 0 );
 	
 	strcpy	( output , mm->nameOfValue );	
 	strcat	( output , "[min].: ");
 	itoa	( mm->min , tmp , 10 );
 	strcat	( output , tmp );
-	Ssd1306PutS( output , pos + 10 , 0 );
+	Ssd1306PutString( output , pos + 10 , 0 );
 				
 	return 0;
 }
@@ -764,7 +758,7 @@ uint8_t bmp180MinMax			( void )
 {
 	if ( ! (readSens.ready & 1<<AVERAGE_FIRST_READY ) )
 	{
-		Ssd1306PutS("Please try later.." , 30 , 0);
+		Ssd1306PutString("Please try later.." , 30 , 0);
 		_delay_ms(1500);
 		return MENUE_EXIT;
 	}
@@ -789,7 +783,7 @@ uint8_t sht21MinMax				( void )
 {
 	if ( ! (readSens.ready & 1<<AVERAGE_FIRST_READY ) )
 	{
-		Ssd1306PutS("Please try later.." , 30 , 0);
+		Ssd1306PutString("Please try later.." , 30 , 0);
 		_delay_ms(1500);
 		return MENUE_EXIT;
 	}
@@ -818,13 +812,13 @@ uint8_t menueExit				( void )
 
 uint8_t operatingHours			( void )
 {
-	Ssd1306PutS( "-Betriebsstunden" , 0 , 0 );
+	Ssd1306PutString( "-Betriebsstunden" , 0 , 0 );
 	Ssd1306SetFont( fixednums15x31 );
 	
 	while (1)
 	{
 		u16Str( operating.hours , output );
-		Ssd1306PutS( output , 30 , 20 );
+		Ssd1306PutString( output , 30 , 20 );
 		
 		if ( button.enterRpt || flag.menueTimeout )
 		{
@@ -840,7 +834,7 @@ uint8_t operatingHours			( void )
 			{
 //				Ssd1306Clear();
 				Ssd1306SetFont( System5x7 );
-				Ssd1306PutS("Zaehler geloescht!" , 30 , 0 );
+				Ssd1306PutString("Zaehler geloescht!" , 30 , 0 );
 				enterWasTipped = 0;
 				eeprom_write_word( &operatingEEP.hours , 0 );
 				operating.hours = 0;
@@ -881,7 +875,7 @@ uint8_t setBrightness			( void )
 	Ssd1306SetFont( System5x7 );
 	strcpy( output , "-" );
 	strcat( output , menueStructMain[4].Name );
-	Ssd1306PutS( output , 0 , 0 ); 
+	Ssd1306PutString( output , 0 , 0 ); 
 	
 	char tmp[5] = "";
 	uint8_t old = 0;
@@ -913,10 +907,10 @@ uint8_t setBrightness			( void )
 		strcpy( output , tmp );
 		strcat( output , "   ");
 		
-		Ssd1306PutS( output , 30 , 50 );
+		Ssd1306PutString( output , 30 , 50 );
 		
-		Ssd1306SendCmd( SSD1306_CMD_SET_VCOM_DESELECT );
-		Ssd1306SendCmd( bright );
+//		_Ssd1306SendCmd( SSD1306_CMD_SET_VCOM_DESELECT );
+//		_Ssd1306SendCmd( bright );
 		
 		if ( button.enter || flag.menueTimeout )
 		{
@@ -931,6 +925,7 @@ uint8_t setBrightness			( void )
 	
 	return 0;
 }
+
 void updateLiveLed				( uint16_t *mil )
 {
 	#define CALC_LIVE(x) (x*1)
@@ -962,14 +957,14 @@ uint8_t showErrors				( void )
 	#define OFFSET_NEW_LINE			8
 		
 	Ssd1306SetFont( System5x7 );
-	Ssd1306PutS( "-Error(s)" , 0 , 0 );
+	Ssd1306PutString( "-Error(s)" , 0 , 0 );
 	
 	while ( !button.enter )
 	{
- 		Ssd1306PutS( errorGetById( &err , _ERROR_GLCD_I2C_ )	, 24 , 0 );
-  		Ssd1306PutS( errorGetById( &err , _ERROR_RTC_I2C_  )	, 32 , 0 );
- 		Ssd1306PutS( errorGetById( &err , _ERROR_SHT21_I2C_ )	, 40 , 0 );
-  		Ssd1306PutS( errorGetById( &err , _ERROR_BMP180_I2C_)	, 48 , 0 );
+ 		Ssd1306PutString( errorGetById( &err , _ERROR_GLCD_I2C_ )	, 24 , 0 );
+  		Ssd1306PutString( errorGetById( &err , _ERROR_RTC_I2C_  )	, 32 , 0 );
+ 		Ssd1306PutString( errorGetById( &err , _ERROR_SHT21_I2C_ )	, 40 , 0 );
+  		Ssd1306PutString( errorGetById( &err , _ERROR_BMP180_I2C_)	, 48 , 0 );
 	}	
 	return 0;
 }
@@ -987,18 +982,18 @@ int main(void)
 	
 	/*	Timer 1 ( 16 Bit ) 
 	*	Wird auf CompareMatch eingestellt
-	*	Auslöseintervall.: 10ms
+	*	Auslöseintervall.: 100ms
 	*/
 	TCCR1B	= ( ( 1<<CS11 ) | ( 1<<CS10 ) | ( 1<<WGM12 ) ); // Prescaler : 64 
 	TIMSK   = ( ( 1<<OCIE1A ) | ( 1<<OCIE2 ) );
-	OCR1A	= 0x04E1;
+	OCR1A	= ((F_CPU / 64 / 100 ) - 1 );
 	
 	/*	Timer 2 
 	*	Wird auf CompareMatch eingestellt
 	*	Auslöseintervall.: 1ms
 	*/
-	TCCR2  |= ((1<<CS22) | (1<<WGM21)); // Prescaler : 64
-	OCR2   = ((F_CPU / 64 / 1000 ) - 1 ); 
+	TCCR2  |= ((1<<CS21) | (1<<WGM21)); // Prescaler : 8
+	OCR2   = 0x03E7; 
 	
 	/*	Interrupts
 	*	Interrupts global freigeben
@@ -1010,24 +1005,10 @@ int main(void)
 	
 	button.enterRpt = 0;	
 	button.enter	= 0;
-	
-	Ssd1306SetFont( impact32 );
-	
-	Ssd1306PutChar('1',10,0);
-	Ssd1306PutChar('2',0,20);
-	Ssd1306PutChar('3',10,40);
-	Ssd1306PutChar('4',0,60);
-	Ssd1306PutChar('5',10,80);
-	Ssd1306SendRam();	
-	
-	while (1)
-	{
-	}		
-						
+			
+			
     while (1) 
     {	
-
-		
  		if ( button.enterRpt )
  		{
 			button.enterRpt = 0;
@@ -1042,14 +1023,14 @@ int main(void)
 		{
 			operating.dispAutoOff = 0;
 			flag.dispIsOff = 1;
-			Ssd1306SendCmd( SSD1306_CMD_DISPLAY_OFF );
+			Ssd1306DisplayState( DISPLAY_OFF );
 		}
 		
 		if ( flag.dispIsOff && button.enter )
 		{
 			flag.dispIsOff = 0;
 			button.enter = 0;
-			Ssd1306SendCmd( SSD1306_CMD_DISPLAY_ON );
+			Ssd1306DisplayState( DISPLAY_ON );
 		}
 		
 		if ( readSens.ready & 1 << RTC_IS_RDY_TO_RD )
@@ -1058,12 +1039,18 @@ int main(void)
 			readSens.ready &= ~( 1 << RTC_IS_RDY_TO_RD );
 			readSens.ready |= ( 1 << RTC_IS_RDY_TO_SHOW_TIME );
 		}
+		
+		static uint8_t OldMinute = 0;
 				
 		if ( readSens.ready & ( 1 << RTC_IS_RDY_TO_SHOW_TIME ) )
 		{					
-			Ssd1306SetFont( fixednums15x31 );
-			Ssd1306PutString( bcd_ttostr( rtc.hour , rtc.minute , rtc.second ) , 0 , 0 );
-			Ssd1306SendRam();
+			if ( OldMinute != rtc.minute )
+			{
+				OldMinute = rtc.minute;
+				Ssd1306SetFont( fixednums15x31 );
+				Ssd1306PutString( bcd_ttostr( rtc.hour , rtc.minute , rtc.second , TTOSTR_HH_MM ) , 0 , 22 );
+				Ssd1306SendRam();
+			}
 			readSens.ready &= ~( 1 << RTC_IS_RDY_TO_SHOW_TIME );	
 		}
 			
@@ -1089,7 +1076,7 @@ ISR( TIMER1_COMPA_vect )
 		flag.menueTimeout = 1;
 	}
 
-	if ( rtcRead++ > 10 )
+	if ( rtcRead++ > 150 )
 	{		
 		rtcRead = 0;
 		readSens.ready |= (1<<RTC_IS_RDY_TO_RD);

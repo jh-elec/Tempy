@@ -29,36 +29,32 @@ inline uint8_t decToBcd(uint8_t val)
 
 uint8_t rx8564Reads( uint8_t *buff , uint8_t leng )
 {
-	if( i2c_start( RX8564_ADDR + I2C_WRITE ) )
+	if ( i2c_start( RX8564_ADDR + I2C_WRITE ) )
 	{
-		errorWriteCircular( &err , _ERROR_RTC_I2C_ , ERROR_I2C_NO_ACK );
-	}
-	
-	if ( i2c_write( buff[0] ) )// Register Adresse
-	{
-		errorWriteCircular( &err , _ERROR_RTC_I2C_ , ERROR_I2C_ADDRESS_TX );
-	}
-	
-	if ( i2c_rep_start( RX8564_ADDR + I2C_READ ) )
-	{
-		errorWriteCircular( &err , _ERROR_RTC_I2C_ , ERROR_I2C_NO_ACK );
 		i2c_stop();
 		return 1;
 	}
 	
-	for ( uint8_t i = 0 ; i < leng ; i++ )
+	i2c_write( buff[0] );// Register Adresse
+	
+	if ( i2c_rep_start( RX8564_ADDR + I2C_READ ) )
 	{
-		if ( leng == 1 )
-		{
-			*buff = i2c_readNak();
-			return 0;
-		}
-		else
-		{
-			*buff++ = i2c_readAck();
-		}
+		i2c_stop();
+		return 1;
 	}
-	*buff = i2c_readNak();
+	
+	if ( leng > 1 )
+	{
+		for ( uint8_t i = 0 ; i < leng ; i++ )
+		{
+			*( buff  + i ) = i2c_readAck();
+		}	
+	}
+	else
+	{
+		*buff = i2c_readNak();
+	}
+	
 	i2c_stop();
 	
 	return 0;
@@ -66,28 +62,17 @@ uint8_t rx8564Reads( uint8_t *buff , uint8_t leng )
 
 uint8_t rx8564Writes( uint8_t *buff , uint8_t leng )
 {
-	i2c_start_wait( RX8564_ADDR + I2C_WRITE );
+	if ( !i2c_start( RX8564_ADDR + I2C_WRITE ) )
+	{
+		i2c_stop();
+		return 1;
+	}
 
 	for ( uint8_t i = 0 ; i < leng ; i++ )
 	{
-		if ( leng == 1 )
-		{
-			if ( i2c_write( *buff ) )
-			{
-				errorWriteCircular( &err , _ERROR_RTC_I2C_ , ERROR_I2C_BYTE_TX );	
-			}
-			
-			i2c_stop();
-			return 0;
-		}
-		else
-		{
-			if ( i2c_write( *buff++ ) )
-			{
-				errorWriteCircular( &err , _ERROR_RTC_I2C_ , ERROR_I2C_BYTE_TX );
-			}
-		}
+		i2c_write( *( buff + i ) );
 	}
+	
 	i2c_stop();
 	
 	return 0;
