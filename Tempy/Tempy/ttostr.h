@@ -42,7 +42,7 @@ enum Days	{
 
 /*****************************************************************
 * description : make a string from uint8_t values (BCD Format!)
-* parameter : hours, minutes, seconds , lenght of the string
+* parameter : hours, minutes, seconds , Length of the string
 * returns : address of time string
 * sample : 	lcd_puts(ttostr(12,05,01));
 *****************************************************************/

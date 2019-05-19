@@ -17,55 +17,30 @@
 
 
 
-static inline uint8_t _Sht21ReadRegs( uint8_t *buff , uint8_t leng )
+static inline enum I2c_Return_Codes _Sht21ReadRegs( uint8_t *buff , uint8_t leng )
 {
-	if ( i2c_start( SHT21_ADDR + I2C_WRITE ) )
-	{
-		i2c_stop();
-		return 1;
-	}
+	I2cTransfer_t Rx;
 	
-	i2c_write( buff[0] ); // Register Adresse
-
-	if ( i2c_rep_start( SHT21_ADDR + I2C_READ ) )
-	{
-		i2c_stop();
-		return 1;
-	}
-
-	if ( leng > 1 )
-	{
-		for ( uint8_t i = 0 ; i < leng ; i++ )
-		{
-			*( buff + i ) = i2c_readAck();
-		}	
-	}
-	else
-	{
-		*buff = i2c_readNak();
-	}
-
-	i2c_stop();
+	Rx.ptrData = buff;
+	Rx.uiLength = leng;
+	Rx.uiSlaveAddress = SHT21_ADDR;
 	
-	return 0;
+	enum I2c_Return_Codes Exitcode = I2cReadBytes( &Rx );
+		
+	return (uint8_t)Exitcode;
 }
 
-static inline uint8_t _Sht21WriteRegs( uint8_t *buff , uint8_t leng )
+static inline enum I2c_Return_Codes _Sht21WriteRegs( uint8_t *buff , uint8_t leng )
 {
-	if ( i2c_start( SHT21_ADDR + I2C_WRITE ) )
-	{
-		i2c_stop();
-		return 1;
-	}
-
-	for ( uint8_t i = 0 ; i < leng ; i++ )
-	{
-		i2c_write( *( buff + i ) );
-	}
+	I2cTransfer_t Tx;
 	
-	i2c_stop();
+	Tx.ptrData = buff;
+	Tx.uiLength = leng;
+	Tx.uiSlaveAddress = SHT21_ADDR;
 	
-	return 0;
+	enum I2c_Return_Codes Exitcode = I2cWriteBytes( &Tx );
+	
+	return Exitcode;
 }
 
 static inline uint8_t _Sht21CalcCRC( uint8_t *data , uint8_t nbrOfBytes )

@@ -19,7 +19,7 @@
 #include "I2C.h"
 
 
-void	i2c_init(void)
+void	i2c_init( void )
 {
 	TWBR = I2C_TWBR;
 }
@@ -100,3 +100,84 @@ void	i2c_stop(void)
 	// transmit STOP condition
 	TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
 }
+
+
+enum I2c_Return_Codes I2cWriteBytes( I2cTransfer_t *Tx )
+{
+	if ( i2c_start( Tx->uiSlaveAddress + I2C_WRITE ) )
+	{
+		i2c_stop();
+		return _I2C_RETURN_NACK_;
+	}	
+	
+	/*
+	*	Sollte die Register Adresse nicht gleich den Wert "255"
+	*	entsprechen, so wird die Adresse nicht in "*ptrData" enthalten sein
+	*	und muss einzeln gesendet werden.
+	*/
+	switch ( Tx->SpecialAddressHandling.uiHandlingAddress )
+	{
+		case I2C_TRANSFER_ADDR_NIDS:
+		{
+			i2c_write( Tx->uiRegisterAddress );
+		}break;
+	}
+	
+	for ( uint16_t ui = 0 ; ui < Tx->uiLength ; ui++ )
+	{
+		if ( i2c_write( *( Tx->ptrData + ui ) ) )
+		{
+			i2c_stop();
+			return _I2C_RETURN_NACK_;
+		}
+	}
+	
+	i2c_stop();
+	
+	return _I2C_RETURN_ACK_;
+}
+
+enum I2c_Return_Codes I2cReadBytes( I2cTransfer_t *Rx )
+{
+	if ( i2c_start( Rx->uiSlaveAddress + I2C_WRITE ) )
+	{
+		i2c_stop();
+		return _I2C_RETURN_NACK_;
+	}
+	
+	/*
+	*	Sollte die Register Adresse nicht gleich den Wert "255"
+	*	entsprechen, so wird die Adresse nicht in "*ptrData" enthalten sein
+	*	und muss einzeln gesendet werden.
+	*/
+	switch ( Rx->SpecialAddressHandling.uiHandlingAddress )
+	{
+		case I2C_TRANSFER_ADDR_NIDS:
+		{
+			i2c_write( Rx->uiRegisterAddress );
+		}break;
+		
+		default:
+		{
+			i2c_write( Rx->ptrData[0] );
+		}
+	}
+	
+	i2c_rep_start( Rx->uiSlaveAddress + I2C_READ );
+	
+	if ( Rx->uiLength > 1 )
+	{
+		for ( uint8_t ui = 0 ; ui < Rx->uiLength ; ui++ )
+		{
+			*( Rx->ptrData + ui ) = i2c_readAck();
+		}		
+	}
+	else
+	{
+		*( Rx->ptrData ) = i2c_readNak();
+	}
+	
+	i2c_stop();
+	
+	return _I2C_RETURN_ACK_;
+};

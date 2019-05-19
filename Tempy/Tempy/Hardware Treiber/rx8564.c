@@ -27,55 +27,32 @@ inline uint8_t decToBcd(uint8_t val)
 	return ((( val / 10 ) << 4) | ( val % 10 ));
 }
 
-uint8_t rx8564Reads( uint8_t *buff , uint8_t leng )
+enum I2c_Return_Codes rx8564Reads( uint8_t *buff , uint8_t leng )
 {
-	if ( i2c_start( RX8564_ADDR + I2C_WRITE ) )
-	{
-		i2c_stop();
-		return 1;
-	}
+	I2cTransfer_t Rx;
 	
-	i2c_write( buff[0] );// Register Adresse
+	Rx.ptrData = buff;
+	Rx.uiLength = leng;
+	Rx.uiRegisterAddress = buff[0];
+	Rx.uiSlaveAddress = RX8564_ADDR;
 	
-	if ( i2c_rep_start( RX8564_ADDR + I2C_READ ) )
-	{
-		i2c_stop();
-		return 1;
-	}
-	
-	if ( leng > 1 )
-	{
-		for ( uint8_t i = 0 ; i < leng ; i++ )
-		{
-			*( buff  + i ) = i2c_readAck();
-		}	
-	}
-	else
-	{
-		*buff = i2c_readNak();
-	}
-	
-	i2c_stop();
-	
-	return 0;
+	enum I2c_Return_Codes Exitcode = I2cReadBytes( &Rx );
+
+	return (uint8_t)Exitcode;
 }
 
-uint8_t rx8564Writes( uint8_t *buff , uint8_t leng )
-{
-	if ( !i2c_start( RX8564_ADDR + I2C_WRITE ) )
-	{
-		i2c_stop();
-		return 1;
-	}
-
-	for ( uint8_t i = 0 ; i < leng ; i++ )
-	{
-		i2c_write( *( buff + i ) );
-	}
+enum I2c_Return_Codes rx8564Writes( uint8_t *buff , uint8_t leng )
+{	
+	I2cTransfer_t Tx;
 	
-	i2c_stop();
+	Tx.ptrData = buff;
+	Tx.uiLength = leng;
+	Tx.uiRegisterAddress = buff[0];
+	Tx.uiSlaveAddress = RX8564_ADDR;
 	
-	return 0;
+	enum I2c_Return_Codes Exitcode = I2cWriteBytes( &Tx );
+	
+	return Exitcode;
 }
 
 
@@ -126,7 +103,7 @@ void rtcSetClkOut(uint8_t frequency)
 void rtcGetData(rx8564_t *buffer)
 {   
 	buff[0] = seconds_register;
-	rx8564Reads( buff , sizeof(buff) );
+	rx8564Reads( buff , 11 );
 			
     buffer->second			= buff[0];
     buffer->minute			= buff[1];  

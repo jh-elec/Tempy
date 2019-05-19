@@ -130,9 +130,10 @@ uint16_t	Ssd1306PutChar		( uint8_t c , uint16_t y , uint16_t x );
 
 void		Ssd1306PutString	( char *msg , uint8_t y , uint8_t x );
 
-void		Ssd1306SendRam		( void );
-
 void		Ssd1306DrawByte		( uint16_t y , uint16_t x , uint8_t Byte );
 
 void		Ssd1306ClearByte	( uint16_t y , uint16_t x );
 
+
+
+enum I2c_Return_Codes	Ssd1306SendRam( void );

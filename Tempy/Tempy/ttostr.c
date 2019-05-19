@@ -86,8 +86,8 @@ char *dec_ttostr( uint8_t Hour , uint8_t Minute , uint8_t Secound )
 	/* DEC to ASCII */
 	if ( Hour == 0xff )
 	{
-		TtStr.Time[0] = ' ';
-		TtStr.Time[1] = ' ';
+		TtStr.Time[0] = '0';
+		TtStr.Time[1] = '0';
 	}else
 	{
 		TtStr.Time[0] = ( ( Hour / 10 ) ) + 48;
@@ -98,8 +98,8 @@ char *dec_ttostr( uint8_t Hour , uint8_t Minute , uint8_t Secound )
 	
 	if ( Minute == 0xff )
 	{
-		TtStr.Time[3] = ' ';
-		TtStr.Time[4] = ' ';		
+		TtStr.Time[3] = '0';
+		TtStr.Time[4] = '0';		
 	}else
 	{
 		TtStr.Time[3] = ( ( Minute / 10 ) ) + 48;
@@ -110,8 +110,8 @@ char *dec_ttostr( uint8_t Hour , uint8_t Minute , uint8_t Secound )
 	
 	if ( Secound == 0xff )
 	{
-		TtStr.Time[6] = ' ';
-		TtStr.Time[7] = ' ';	
+		TtStr.Time[6] = '0';
+		TtStr.Time[7] = '0';	
 	}else
 	{
 		TtStr.Time[6] = ( ( Secound / 10 ) ) + 48;

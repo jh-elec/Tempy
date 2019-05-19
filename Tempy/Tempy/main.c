@@ -378,15 +378,15 @@ uint8_t cnfgTime_				( uint8_t *buff )
 			{
 				buff[TIME_HOUR + i] = cmp;
 			}
+			
+			cli();
 			switch(i)
 			{
 				case 0:
 				{
-					//Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
 					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
 					Ssd1306SendRam();
-					_delay_ms( 100 );
-					//Ssd1306PutString( dec_ttostr( 0xFF , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );		
+					_delay_ms( 100 );		
 					Ssd1306PutString( dec_ttostr( 0xFF , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
 					Ssd1306SendRam();
 					_delay_ms( 100 );
@@ -395,27 +395,29 @@ uint8_t cnfgTime_				( uint8_t *buff )
 				case 1:
 				{
 					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );
+					Ssd1306SendRam();
 					_delay_ms( 100 );
 					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , 0xFF , buff[TIME_SECOUNDS] ) , 25 , 0 );
+					Ssd1306SendRam();
 					_delay_ms( 100 );				
 				}break;
 					
 				case 2:
 				{
 					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );
+					Ssd1306SendRam();
 					_delay_ms( 100 );
 					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , 0xFF ) , 25 , 0 );
+					Ssd1306SendRam();
 					_delay_ms( 100 );				
 				}break;
 			}
+			sei();
 		}     
 	}
 	
 	rtcSetTime( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] );
  
-	//Ssd1306Clear();
-	
-	
     return SUCCESS;
 }
 
@@ -993,7 +995,7 @@ int main(void)
 	*	Auslöseintervall.: 1ms
 	*/
 	TCCR2  |= ((1<<CS21) | (1<<WGM21)); // Prescaler : 8
-	OCR2   = 0x03E7; 
+	OCR2   = ((F_CPU / 64 / 1000 ) - 1 );; 
 	
 	/*	Interrupts
 	*	Interrupts global freigeben

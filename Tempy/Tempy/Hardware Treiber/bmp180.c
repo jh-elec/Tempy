@@ -62,55 +62,32 @@ struct bmp180_t bmp180;
 
 s8 BMP180_I2C_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
 {
-	i2c_start_wait( dev_addr + I2C_WRITE );
+	I2cTransfer_t Tx;
 	
-	if ( i2c_write( reg_addr ) ) // Register Adresse
-	{
-		errorWriteCircular( &err , _ERROR_BMP180_I2C_ , ERROR_I2C_ADDRESS_TX );
-	}
+	Tx.ptrData = reg_data;
+	Tx.uiLength = cnt;
+	Tx.uiRegisterAddress = reg_addr;
+	Tx.SpecialAddressHandling.uiHandlingAddress = I2C_TRANSFER_ADDR_NIDS;
+	Tx.uiSlaveAddress = dev_addr;
 	
-	for ( u8 i = 0 ; i < cnt ; i++ )
-	{
-		if ( i2c_write( reg_data[i] ) )
-		{
-			errorWriteCircular( &err , _ERROR_BMP180_I2C_ , ERROR_I2C_BYTE_TX );	
-		}
-	}
-	i2c_stop();
-	
-	return (s8)0;
+	enum I2c_Return_Codes Exitcode = I2cWriteBytes( &Tx );
+			
+	return (s8)Exitcode;
 }
 
 s8 BMP180_I2C_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
 {
-	u8 i;
+	I2cTransfer_t Rx;
 	
-	i2c_start_wait( dev_addr + I2C_WRITE );
+	Rx.ptrData = reg_data;
+	Rx.uiLength = cnt;
+	Rx.uiRegisterAddress = reg_addr;
+	Rx.SpecialAddressHandling.uiHandlingAddress = I2C_TRANSFER_ADDR_NIDS;
+	Rx.uiSlaveAddress = dev_addr;
 	
-	if ( i2c_write( reg_addr ) ) // Register Adresse
-	{
-		errorWriteCircular( &err , _ERROR_BMP180_I2C_ , ERROR_I2C_ADDRESS_TX );		
-	}
-	
-	i2c_stop();
-	
-	if ( cnt == 1 )
-	{
-		i2c_start_wait( dev_addr + I2C_READ );
-		reg_data[0] = i2c_readNak();	
-	}
-	else
-	{
-		i2c_start_wait( dev_addr + I2C_READ );
-		for ( i = 0 ; i < cnt ; i++ )
-		{
-			reg_data[i] = i2c_readAck();
-		}
-		reg_data[++i] = i2c_readNak();			
-	}
-	i2c_stop();
-			
-	return (s8)0;
+	enum I2c_Return_Codes Exitcode = I2cReadBytes( &Rx );
+				
+	return (s8)Exitcode;
 }
 
 void BMP180_delay_msek(u32 msek)

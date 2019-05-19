@@ -18,26 +18,48 @@
 #define I2C_READ		0x01
 #define I2C_WRITE		0x00
 
-#define I2C_F_SCL		800000UL // SCL frequency
+#define I2C_F_SCL		700000UL // SCL frequency
 #define I2C_PRESCALER	1
 #define I2C_TWBR		((((F_CPU / I2C_F_SCL) / I2C_PRESCALER) - 16 ) / 2)
+
+enum I2c_Return_Codes
+{
+	_I2C_RETURN_NACK_,
+	_I2C_RETURN_ACK_,	
+};
+
+enum I2c_Transfer
+{
+	I2C_TRANSFER_ADDR_NIDS = 0xFF, // Register Adresse ist nicht im Datenstrom enthalten (NotInDataStream)
+};
+
+typedef struct  
+{
+	uint8_t	*ptrData;
+	
+	uint16_t uiLength;
+	
+	uint8_t	 uiSlaveAddress;
+	
+	uint8_t	 uiRegisterAddress;
+	
+	struct  
+	{
+		/*	Haendelt das senden der Registeradresse
+		*/
+		enum I2c_Transfer Handling;	
+		uint8_t uiHandlingAddress;
+		
+	}SpecialAddressHandling;
+	
+}I2cTransfer_t;
 
 
 void	i2c_init(void);
 
-uint8_t i2c_start(uint8_t address);
+enum	I2c_Return_Codes I2cWriteBytes( I2cTransfer_t *Tx );
 
-void	i2c_start_wait(uint8_t address);
-
-uint8_t i2c_rep_start(uint8_t address);
-
-uint8_t i2c_write(uint8_t data);
-
-uint8_t i2c_readAck(void);
-
-uint8_t i2c_readNak(void);
-
-void	i2c_stop(void);
+enum	I2c_Return_Codes I2cReadBytes( I2cTransfer_t *Rx );
 
 
 #endif // I2C_MASTER_H

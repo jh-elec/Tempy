@@ -26,18 +26,18 @@ static Font_t Font;
 const uint8_t __flash *_ptrFont = NULL;
 
 
-static inline uint8_t	Ssd1306Write( uint8_t *buff , uint16_t leng )
-{
-	i2c_start_wait( SSD1306_ADDR + I2C_WRITE );
+static inline enum I2c_Return_Codes	Ssd1306Write( uint8_t *buff , uint16_t leng )
+{	
+	I2cTransfer_t Tx;
 	
-	for ( uint16_t i = 0 ; i < leng ; i++ )
-	{
-		i2c_write( *buff++ );
-	}
-
-	i2c_stop();
+	Tx.ptrData = buff;
+	Tx.uiLength = leng;
+	Tx.uiRegisterAddress = buff[0];
+	Tx.uiSlaveAddress = SSD1306_ADDR;
 	
-	return 0;
+	enum I2c_Return_Codes Exitcode = I2cWriteBytes( &Tx );
+	
+	return Exitcode;
 }
 
 static inline uint8_t	_SwapBits(uint8_t byte)
@@ -231,7 +231,7 @@ void		Ssd1306ClearPixel( uint16_t y , uint16_t x )
 	DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] &=  ~( 1 << ( y & 7 ) );
 }
 
-void		Ssd1306SendRam( void )
+enum I2c_Return_Codes	Ssd1306SendRam( void )
 {
 	uint8_t buff[] =
 	{
@@ -246,13 +246,17 @@ void		Ssd1306SendRam( void )
 	
 	Ssd1306Write( buff , sizeof( buff ) );
 
-	i2c_start_wait( SSD1306_ADDR + I2C_WRITE );
- 	i2c_write( SSD1306_MODE_DATA ); // Data is comming..
- 	for ( uint16_t ui = 0 ; ui < sizeof( DisplayRam ) ; ui++ )
- 	{
- 		i2c_write( DisplayRam[ui] );
- 	}
- 	i2c_stop();
+	I2cTransfer_t Tx;
+	
+	Tx.ptrData = DisplayRam;
+	Tx.uiLength = sizeof( DisplayRam );
+	Tx.uiRegisterAddress = SSD1306_MODE_DATA;
+	Tx.uiSlaveAddress = SSD1306_ADDR;
+	Tx.SpecialAddressHandling.uiHandlingAddress = I2C_TRANSFER_ADDR_NIDS;
+	
+	enum I2c_Return_Codes Exitcode = I2cWriteBytes( &Tx );
+	
+	return Exitcode;
 }
 
 uint16_t	Ssd1306PutChar( uint8_t c , uint16_t y , uint16_t x )
