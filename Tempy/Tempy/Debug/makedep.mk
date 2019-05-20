@@ -4,8 +4,6 @@
 
 build_info.c
 
-error.c
-
 Hardware Treiber\bmp180.c
 
 Hardware Treiber\I2C.c

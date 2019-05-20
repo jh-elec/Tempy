@@ -134,6 +134,6 @@ void		Ssd1306DrawByte		( uint16_t y , uint16_t x , uint8_t Byte );
 
 void		Ssd1306ClearByte	( uint16_t y , uint16_t x );
 
-
+void		Ssd1306SetBrightness( uint8_t Brightness );
 
 enum I2c_Return_Codes	Ssd1306SendRam( void );

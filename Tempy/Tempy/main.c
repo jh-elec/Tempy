@@ -26,8 +26,8 @@
 #include "Hardware Treiber/I2C.h"
 #include "Hardware Treiber/ssd1306.h"
 #include "Hardware Treiber/rx8564.h"
-#include "Hardware Treiber/bmp180.h"
-#include "Hardware Treiber/sht21.h"
+#include "Hardware Treiber/Bmp180.h"
+#include "Hardware Treiber/Sht21.h"
 
 #include "Fonts/Arial_14.h"
 #include "Fonts/Arial_Black_16.h"
@@ -40,7 +40,6 @@
 
 #include "build_info.h"
 #include "ttostr.h"
-#include "error.h"
 
 #define DDRx(PORTx)				( * ( &PORTx - 1 ) )
 
@@ -57,7 +56,6 @@
 #define ENC_PHASE_B_bp			PA6
 #define ENC_SWITCH_bp			PA7
 
-
 #define MEASUREMENT_AVERAGE		5
 
 #define CALC_MIN(MIN)			( MIN * 59 )
@@ -66,11 +64,13 @@
 
 typedef struct  
 {
-	uint16_t mil;
-	uint8_t sec;
-	uint8_t min;
-}systime_t;
-volatile systime_t tim;
+	
+	uint16_t	Milisecound;
+	uint8_t		Secound;
+	uint8_t		Minute;
+	
+}SystemTime_t;
+volatile SystemTime_t SystemTime;
 
 typedef struct  
 {
@@ -90,22 +90,22 @@ typedef struct
 	enum
 	{
 		RTC_IS_RDY_TO_RD,
-		RTC_IS_RDY_TO_SHOW_TIME,
-		SENSORS_READY,
-		AVERAGE_READY,
-		AVERAGE_FIRST_READY,
-		MIN_MAX_VALUES_READY,
-	}readState;
+		RTC_IS_RDY_TO_SHOW_SystemTimeE,
+		SENSORS_Ready,
+		AVERAGE_Ready,
+		AVERAGE_FIRST_Ready,
+		MIN_MAX_VALUES_Ready,
+	}SensorReady;
 	
 	struct  
 	{
 		struct
 		{
 			uint32_t	pressAvrg;
-			int32_t	tempAvrg;
-			int32_t	temp;
+			int32_t		tempAvrg;
+			int32_t		temp;
 			uint32_t	pressure;
-		}bmp180;
+		}Bmp180;
 		
 		struct
 		{
@@ -114,12 +114,12 @@ typedef struct
 			
 			int16_t		temp;
 			uint32_t	humidity;
-		}sht21;
+		}Sht21;
 	}processValue;
 	
-	uint8_t ready;
+	uint8_t Ready;
 
-}readtime_t; volatile readtime_t readSens;
+}Sensor_t; volatile Sensor_t Sensor;
 
 typedef struct
 {
@@ -165,28 +165,28 @@ typedef struct
 minMax_t minMax[MIN_MAX_ENTRYS] =
 {
 	{
-		.nameOfSensor	= "-BMP180",
+		.nameOfSensor	= "-Bmp180",
 		.nameOfValue	= "Temp.",
 		.min			= 32767,
 		.max			= -32767,
 	},
 	
 	{
-		.nameOfSensor	=	"-BMP180",
+		.nameOfSensor	=	"-Bmp180",
 		.nameOfValue	= "Luftdr.",
 		.min			= 32767,
 		.max			= -32767,
 	},	
 	
 	{
-		.nameOfSensor	= "-SHT21",
+		.nameOfSensor	= "-Sht21",
 		.nameOfValue	= "Temp.",
 		.min			= 32767,
 		.max			= -32767,
 	},
 	
 	{
-		.nameOfSensor	= "-SHT21",
+		.nameOfSensor	= "-Sht21",
 		.nameOfValue	= "Feuch.",
 		.min			= 32767,
 		.max			= -32767,
@@ -209,7 +209,7 @@ typedef struct
 
 typedef struct  
 {
-	uint8_t menueTimeout	:1;
+	uint8_t menueSystemTimeout	:1;
 	uint8_t dispIsOff		:1;
 }flag_t; volatile flag_t flag;
 
@@ -233,7 +233,7 @@ int32_t		tempRaw = 0;
 uint8_t secoundCmp = 0;
 uint8_t eepInit EEMEM;
 
-void clearLine					( uint8_t PosY_Page )
+void	clearLine				( uint8_t PosY_Page )
 {
 	for ( uint8_t ui = 0 ; ui < 128 ; ui++ )
 	{
@@ -241,79 +241,68 @@ void clearLine					( uint8_t PosY_Page )
 	}
 }
 
-
-inline void u16Str				( uint16_t u16 , char *str )
+void	checkMinMax				( volatile Sensor_t *Sensor , minMax_t *mm )
 {
-	str[0] = ( ( u16 / 10000 ) % 10 ) + '0';
-	str[1] = ( ( u16 / 1000 ) % 10 ) + '0';
-	str[2] = ( ( u16 / 100 ) % 10 ) + '0';
-	str[3] = ( ( u16 / 10 ) % 10 ) + '0';
-	str[4] = ( u16 % 10 ) + '0';
-	str[5] = '\0';
-}
-
-void checkMinMax				( volatile readtime_t *r , minMax_t *mm )
-{
-	/*	Luftdruckmessung "BMP180"
+	/*	Luftdruckmessung "Bmp180"
 	*	Hier werden die "minimalen / maximalen" Werte ermittelt
 	*/
-	if ( (int32_t)(r->processValue.bmp180.pressure / 100) > mm[BMP_180_PRESS].max )
+	if ( (int32_t)(Sensor->processValue.Bmp180.pressure / 100) > mm[BMP_180_PRESS].max )
 	{
-		mm[BMP_180_PRESS].max = (int32_t)r->processValue.bmp180.pressure / 100;	
+		mm[BMP_180_PRESS].max = (int32_t)Sensor->processValue.Bmp180.pressure / 100;	
 	}
-	if ( (int32_t)(r->processValue.bmp180.pressure / 100) < mm[BMP_180_PRESS].min )
+	if ( (int32_t)(Sensor->processValue.Bmp180.pressure / 100) < mm[BMP_180_PRESS].min )
 	{
-		mm[BMP_180_PRESS].min = (int32_t)r->processValue.bmp180.pressure / 100;
+		mm[BMP_180_PRESS].min = (int32_t)Sensor->processValue.Bmp180.pressure / 100;
 	}
 	
-	/*	Temperaturmessung "BMP180"
+	/*	Temperaturmessung "Bmp180"
 	*	Hier werden die "minimalen / maximalen" Werte ermittelt
 	*/
-	if ( (int32_t)(r->processValue.bmp180.temp / 10) > mm[BMP_180_TEMP].max )
+	if ( (int32_t)(Sensor->processValue.Bmp180.temp / 10) > mm[BMP_180_TEMP].max )
 	{
-		mm[BMP_180_TEMP].max = (int32_t)r->processValue.bmp180.temp / 10;
+		mm[BMP_180_TEMP].max = (int32_t)Sensor->processValue.Bmp180.temp / 10;
 	}
-	if ( (int32_t)(r->processValue.bmp180.temp / 10) < mm[BMP_180_TEMP].min )
+	if ( (int32_t)(Sensor->processValue.Bmp180.temp / 10) < mm[BMP_180_TEMP].min )
 	{
-		mm[BMP_180_TEMP].min = (int32_t)r->processValue.bmp180.temp / 10;
+		mm[BMP_180_TEMP].min = (int32_t)Sensor->processValue.Bmp180.temp / 10;
 	}
 	
-	/*	Feuchtigkeitsmessung "SHT21"
+	/*	Feuchtigkeitsmessung "Sht21"
 	*	Hier werden die "minimalen / maximalen" Werte ermittelt
 	*/
-	if ( (int32_t)(r->processValue.sht21.humidity ) > mm[SHT_21_HUMIDITY].max )
+	if ( (int32_t)(Sensor->processValue.Sht21.humidity ) > mm[SHT_21_HUMIDITY].max )
 	{
-		mm[SHT_21_HUMIDITY].max = (int32_t)r->processValue.sht21.humidity;
+		mm[SHT_21_HUMIDITY].max = (int32_t)Sensor->processValue.Sht21.humidity;
 	}
-	if ( (int32_t)(r->processValue.sht21.humidity ) < mm[SHT_21_HUMIDITY].min )
+	if ( (int32_t)(Sensor->processValue.Sht21.humidity ) < mm[SHT_21_HUMIDITY].min )
 	{
-		mm[SHT_21_HUMIDITY].min = (int32_t)r->processValue.sht21.humidity;
+		mm[SHT_21_HUMIDITY].min = (int32_t)Sensor->processValue.Sht21.humidity;
 	}
 	
-	/*	Temperaturmessung "SHT21"
+	/*	Temperaturmessung "Sht21"
 	*	Hier werden die "minimalen / maximalen" Werte ermittelt
 	*/
-	if ( (int32_t)(r->processValue.sht21.temp ) > mm[SHT_21_TEMP].max )
+	if ( (int32_t)(Sensor->processValue.Sht21.temp ) > mm[SHT_21_TEMP].max )
 	{
-		mm[SHT_21_TEMP].max = (int32_t)r->processValue.sht21.temp;
+		mm[SHT_21_TEMP].max = (int32_t)Sensor->processValue.Sht21.temp;
 	}
-	if ( (int32_t)(r->processValue.sht21.temp ) < mm[SHT_21_TEMP].min )
+	if ( (int32_t)(Sensor->processValue.Sht21.temp ) < mm[SHT_21_TEMP].min )
 	{
-		mm[SHT_21_TEMP].min = (int32_t)r->processValue.sht21.temp;
+		mm[SHT_21_TEMP].min = (int32_t)Sensor->processValue.Sht21.temp;
 	}
 }
 
-uint8_t cnfgTime_				( uint8_t *buff )
+uint8_t cnfgSystemTimee_		( uint8_t *buff )
 {     
 	uint8_t cmp = 0;
 	
 	enum
 	{
-		TIME_HOUR,
-		TIME_MINUTES,
-		TIME_SECOUNDS,
+		SystemTimeE_HOUR,
+		SystemTimeE_MINUTES,
+		SystemTimeE_SECOUNDS,
 		
-		TIME_MAX_ENTRYS	
+		SystemTimeE_MAX_ENTRYS	
 	};
 	
 	enum error
@@ -330,21 +319,21 @@ uint8_t cnfgTime_				( uint8_t *buff )
     uint8_t maxValues[] = { 23 , 59 , 59 }; 
 		
 	rtcGetData( &rtc );
-	buff[TIME_HOUR]		= bcdToDec(rtc.hour);
-	buff[TIME_MINUTES]	= bcdToDec(rtc.minute);
-	buff[TIME_SECOUNDS]	= bcdToDec(rtc.second);
+	buff[SystemTimeE_HOUR]		= bcdToDec(rtc.hour);
+	buff[SystemTimeE_MINUTES]	= bcdToDec(rtc.minute);
+	buff[SystemTimeE_SECOUNDS]	= bcdToDec(rtc.second);
 	
 	Ssd1306SetFont( System5x7 );
 	Ssd1306PutString("-Uhrzeit stellen.." , 0 , 0 );
 	Ssd1306SetFont( fixednums15x31 );
 
 	
-	//Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
-	Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
+	//Ssd1306PutString( dec_ttostr( buff[SystemTimeE_HOUR] , buff[SystemTimeE_MINUTES] , buff[SystemTimeE_SECOUNDS] ) , 25 , 0 );	
+	Ssd1306PutString( dec_ttostr( buff[SystemTimeE_HOUR] , buff[SystemTimeE_MINUTES] , buff[SystemTimeE_SECOUNDS] ) , 25 , 0 );	
 		
-    for ( uint8_t i = 0 ; i < 3 && ( ! ( flag.menueTimeout ) )  ; i++ )
+    for ( uint8_t i = 0 ; i < 3 && ( ! ( flag.menueSystemTimeout ) )  ; i++ )
     {
-		cmp = buff[TIME_HOUR + i];
+		cmp = buff[SystemTimeE_HOUR + i];
 		while( 1 )
 		{
 			cmp += enc.result;
@@ -360,7 +349,7 @@ uint8_t cnfgTime_				( uint8_t *buff )
 			if ( button.enterRpt )
 			{
 				button.enterRpt = 0;
-				flag.menueTimeout = 1;
+				flag.menueSystemTimeout = 1;
 				break;
 			}
 			
@@ -369,14 +358,14 @@ uint8_t cnfgTime_				( uint8_t *buff )
 				cmp = 0;
 			}
 		
-			if ( cmp >= maxValues[TIME_HOUR + i] )
+			if ( cmp >= maxValues[SystemTimeE_HOUR + i] )
 			{
 				cmp = 0;
-				buff[TIME_HOUR + i] = 0;
+				buff[SystemTimeE_HOUR + i] = 0;
 			}
 			else
 			{
-				buff[TIME_HOUR + i] = cmp;
+				buff[SystemTimeE_HOUR + i] = cmp;
 			}
 			
 			cli();
@@ -384,30 +373,30 @@ uint8_t cnfgTime_				( uint8_t *buff )
 			{
 				case 0:
 				{
-					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
+					Ssd1306PutString( dec_ttostr( buff[SystemTimeE_HOUR] , buff[SystemTimeE_MINUTES] , buff[SystemTimeE_SECOUNDS] ) , 25 , 0 );	
 					Ssd1306SendRam();
 					_delay_ms( 100 );		
-					Ssd1306PutString( dec_ttostr( 0xFF , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );	
+					Ssd1306PutString( dec_ttostr( 0xFF , buff[SystemTimeE_MINUTES] , buff[SystemTimeE_SECOUNDS] ) , 25 , 0 );	
 					Ssd1306SendRam();
 					_delay_ms( 100 );
 				}break;
 					
 				case 1:
 				{
-					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );
+					Ssd1306PutString( dec_ttostr( buff[SystemTimeE_HOUR] , buff[SystemTimeE_MINUTES] , buff[SystemTimeE_SECOUNDS] ) , 25 , 0 );
 					Ssd1306SendRam();
 					_delay_ms( 100 );
-					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , 0xFF , buff[TIME_SECOUNDS] ) , 25 , 0 );
+					Ssd1306PutString( dec_ttostr( buff[SystemTimeE_HOUR] , 0xFF , buff[SystemTimeE_SECOUNDS] ) , 25 , 0 );
 					Ssd1306SendRam();
 					_delay_ms( 100 );				
 				}break;
 					
 				case 2:
 				{
-					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] ) , 25 , 0 );
+					Ssd1306PutString( dec_ttostr( buff[SystemTimeE_HOUR] , buff[SystemTimeE_MINUTES] , buff[SystemTimeE_SECOUNDS] ) , 25 , 0 );
 					Ssd1306SendRam();
 					_delay_ms( 100 );
-					Ssd1306PutString( dec_ttostr( buff[TIME_HOUR] , buff[TIME_MINUTES] , 0xFF ) , 25 , 0 );
+					Ssd1306PutString( dec_ttostr( buff[SystemTimeE_HOUR] , buff[SystemTimeE_MINUTES] , 0xFF ) , 25 , 0 );
 					Ssd1306SendRam();
 					_delay_ms( 100 );				
 				}break;
@@ -416,26 +405,19 @@ uint8_t cnfgTime_				( uint8_t *buff )
 		}     
 	}
 	
-	rtcSetTime( buff[TIME_HOUR] , buff[TIME_MINUTES] , buff[TIME_SECOUNDS] );
+	rtcSetTime( buff[SystemTimeE_HOUR] , buff[SystemTimeE_MINUTES] , buff[SystemTimeE_SECOUNDS] );
  
     return SUCCESS;
 }
 
-uint8_t menueTime				( void );
+uint8_t menueSystemTime			( void );
 
 uint8_t reboot					( void );
-
-uint8_t bmp180MinMax			( void );
-
-uint8_t sht21MinMax				( void );
 
 uint8_t menueExit				( void );
 
 uint8_t operatingHours			( void );
 
-uint8_t setBrightness			( void );
-
-uint8_t showErrors				( void );
 
 typedef struct					
 {
@@ -456,13 +438,8 @@ menue_t menueStructMain []	=
 	*	Menüpunkt '0' wird nur für den Namen des Menüs verwendet!
 	*/
 	{"-Einstellungen"	,	NULL						,	0	},
-	{"Uhrzeit"			,	menueTime					,	0	},
-	{"BMP180"			,	bmp180MinMax				,	0	},
-	{"SHT21"			,	sht21MinMax					,	0	},
-	{"Hellig."			,	setBrightness				,	0	},
-	{"Betrieb."			,	operatingHours				,	0	},
+	{"Uhrzeit"			,	menueSystemTime				,	0	},
 	{"Neustart"			,	reboot						,	0	},
-	{"Error(s)"			,	showErrors					,	0	},
 	{"Exit"				,	menueExit					,	0xFF},
 };
 
@@ -474,9 +451,9 @@ uint8_t showMenue				(menue_t *m, enc_t *enc, size_t menueLen)
 	uint8_t menueEntry = 0 , y = 0 , retCursor = 0;
 	static uint8_t encWasMoved = 0;
 	
-	flag.menueTimeout = 0;
+	flag.menueSystemTimeout = 0;
 	
-	while( ! ( flag.menueTimeout ) )
+	while( ! ( flag.menueSystemTimeout ) )
 	{
 		if ( enc->result <= 1 )
 		{
@@ -502,7 +479,7 @@ uint8_t showMenue				(menue_t *m, enc_t *enc, size_t menueLen)
 		if ( encWasMoved != enc->result )
 		{
 			encWasMoved = enc->result;
-			tim.mil = 0;
+			SystemTime.Milisecound = 0;
 		}
 		
 		Ssd1306ClearScreen();
@@ -541,7 +518,7 @@ uint8_t showMenue				(menue_t *m, enc_t *enc, size_t menueLen)
 		{	
 			button.enter = 0;
 			button.enterRpt = 0;
-			flag.menueTimeout = 0;	
+			flag.menueSystemTimeout = 0;	
 				
 			Ssd1306ClearScreen();
 			Ssd1306SendRam();
@@ -556,14 +533,14 @@ uint8_t showMenue				(menue_t *m, enc_t *enc, size_t menueLen)
 				if (m[retCursor].fp() == MENUE_EXIT )
 				{
 					Ssd1306SetFont( System5x7 );
-					flag.menueTimeout = 0;
+					flag.menueSystemTimeout = 0;
 					button.enter = 0;
 					button.enterRpt = 0;
 					break;
 				}
 			}	
 			Ssd1306SetFont( System5x7 );
-			flag.menueTimeout = 0;
+			flag.menueSystemTimeout = 0;
 			button.enter = 0;
 			button.enterRpt = 0;
 			Ssd1306ClearScreen();
@@ -579,19 +556,20 @@ uint8_t showMenue				(menue_t *m, enc_t *enc, size_t menueLen)
 	return 0;
 }
 
-uint8_t menueTime				( void )
+uint8_t menueSystemTime			( void )
 {
-	cnfgTime_( tme );
+	cnfgSystemTimee_( tme );
 	
 	return 0;
 }
 
 uint8_t reboot					( void )
 {
-//	Ssd1306Clear();
+	Ssd1306ClearScreen();
 	
 	Ssd1306SetFont( Arial_Black_16 );
 	Ssd1306PutString( "Reboot.." , 25 , 0 );	
+	Ssd1306SendRam();
 	
 	_delay_ms(2500);
 	
@@ -601,16 +579,13 @@ uint8_t reboot					( void )
 	return 0;	
 }
 
-
-
-
-void refreshDisplay				( void )
+void	refreshDisplay			( void )
 {		
 	static char tmp[8] = "";
 	static uint8_t avg = 0;
 	static uint8_t firstRead = 0;	
 	
-	if ( readSens.ready & 1<<SENSORS_READY )
+	if ( Sensor.Ready & 1<<SENSORS_Ready )
 	{
  		Sht21Read( &temp_ , &humidity_ );
  		pressRaw = bmp180_get_uncomp_pressure();
@@ -622,20 +597,20 @@ void refreshDisplay				( void )
 		if ( avg++ == MEASUREMENT_AVERAGE )
 		{	
 			avg = 0;
- 			readSens.processValue.bmp180.pressAvrg		/= (uint32_t)MEASUREMENT_AVERAGE;
- 			readSens.processValue.bmp180.tempAvrg		/= (int32_t)MEASUREMENT_AVERAGE;
- 			readSens.processValue.sht21.humidityAvrg	/= (uint32_t)MEASUREMENT_AVERAGE;
- 			readSens.processValue.sht21.tempAvrg		/= (int32_t)MEASUREMENT_AVERAGE;
+ 			Sensor.processValue.Bmp180.pressAvrg		/= (uint32_t)MEASUREMENT_AVERAGE;
+ 			Sensor.processValue.Bmp180.tempAvrg		/= (int32_t)MEASUREMENT_AVERAGE;
+ 			Sensor.processValue.Sht21.humidityAvrg	/= (uint32_t)MEASUREMENT_AVERAGE;
+ 			Sensor.processValue.Sht21.tempAvrg		/= (int32_t)MEASUREMENT_AVERAGE;
 
-			readSens.processValue.bmp180.pressure		= (uint32_t)readSens.processValue.bmp180.pressAvrg;
-			readSens.processValue.bmp180.temp			= (int32_t)readSens.processValue.bmp180.tempAvrg;
-			readSens.processValue.sht21.humidity		= (uint16_t)readSens.processValue.sht21.humidityAvrg;
-			readSens.processValue.sht21.temp			= (int16_t)readSens.processValue.sht21.tempAvrg;
+			Sensor.processValue.Bmp180.pressure		= (uint32_t)Sensor.processValue.Bmp180.pressAvrg;
+			Sensor.processValue.Bmp180.temp			= (int32_t)Sensor.processValue.Bmp180.tempAvrg;
+			Sensor.processValue.Sht21.humidity		= (uint16_t)Sensor.processValue.Sht21.humidityAvrg;
+			Sensor.processValue.Sht21.temp			= (int16_t)Sensor.processValue.Sht21.tempAvrg;
 
-			readSens.processValue.bmp180.pressAvrg		= 0;
-			readSens.processValue.bmp180.tempAvrg		= 0;
-			readSens.processValue.sht21.humidityAvrg	= 0;
-			readSens.processValue.sht21.tempAvrg		= 0;
+			Sensor.processValue.Bmp180.pressAvrg		= 0;
+			Sensor.processValue.Bmp180.tempAvrg		= 0;
+			Sensor.processValue.Sht21.humidityAvrg	= 0;
+			Sensor.processValue.Sht21.tempAvrg		= 0;
 			
 			/*
 			*	Jede zweite Messung auswerten..
@@ -646,23 +621,23 @@ void refreshDisplay				( void )
 			}
 			else
 			{
-				checkMinMax( &readSens , minMax );
+				checkMinMax( &Sensor , minMax );
 				showNewValues = 0; showNewValues_ = 1;	
-				readSens.ready |= ( ( 1<<MIN_MAX_VALUES_READY ) | ( 1<<AVERAGE_READY ) | ( 1<<AVERAGE_FIRST_READY ) );
+				Sensor.Ready |= ( ( 1<<MIN_MAX_VALUES_Ready ) | ( 1<<AVERAGE_Ready ) | ( 1<<AVERAGE_FIRST_Ready ) );
 			}	
 		}
 		else
 		{
-			readSens.processValue.bmp180.pressAvrg		+= pressRaw;
-			readSens.processValue.bmp180.tempAvrg		+= tempRaw;
-			readSens.processValue.sht21.humidityAvrg	+= humidity_;
-			readSens.processValue.sht21.tempAvrg		+= temp_;
+			Sensor.processValue.Bmp180.pressAvrg		+= pressRaw;
+			Sensor.processValue.Bmp180.tempAvrg		+= tempRaw;
+			Sensor.processValue.Sht21.humidityAvrg	+= humidity_;
+			Sensor.processValue.Sht21.tempAvrg		+= temp_;
 		}
 		
-		readSens.ready &= ~( 1<<SENSORS_READY );		
+		Sensor.Ready &= ~( 1<<SENSORS_Ready );		
 	}
 
-	if ( readSens.ready & 1<<AVERAGE_FIRST_READY )
+	if ( Sensor.Ready & 1<<AVERAGE_FIRST_Ready )
 	{
 		if ( clearOld != clearNew )
 		{
@@ -677,24 +652,24 @@ void refreshDisplay				( void )
 			showNewValues = showNewValues_;
 			Ssd1306SetFont( System5x7 );
 			
-			if ( readSens.processValue.sht21.humidity > 99 )
+			if ( Sensor.processValue.Sht21.humidity > 99 )
 			{
-				readSens.processValue.sht21.humidity = 100;
+				Sensor.processValue.Sht21.humidity = 100;
 			}
 			
-			itoa( readSens.processValue.bmp180.pressure / 100 , tmp , 10 );
+			itoa( Sensor.processValue.Bmp180.pressure / 100 , tmp , 10 );
 			strcpy( output , "Luftdruck: " );
 			strcat( output , tmp );
 			strcat( output , " hpa");
 			Ssd1306PutString( output , 35 , 0 );
 			
-			itoa( readSens.processValue.sht21.humidity , tmp , 10 );
+			itoa( Sensor.processValue.Sht21.humidity , tmp , 10 );
 			strcpy( output , "Luftfeu. : ");
 			strcat(output  , tmp );
 			strcat(output  , " % ");
 			Ssd1306PutString( output, 45 , 0 );
 			
-			itoa( readSens.processValue.sht21.temp , tmp , 10 );
+			itoa( Sensor.processValue.Sht21.temp , tmp , 10 );
 			strcpy(output , "Temp.[1] : ");
 			strcat( output , tmp );
 			strcat(output , " Cel. " );
@@ -753,101 +728,17 @@ uint8_t showMinMaxValues		( minMax_t *mm , uint8_t pos )
 	strcat	( output , tmp );
 	Ssd1306PutString( output , pos + 10 , 0 );
 				
-	return 0;
-}
-
-uint8_t bmp180MinMax			( void )
-{
-	if ( ! (readSens.ready & 1<<AVERAGE_FIRST_READY ) )
-	{
-		Ssd1306PutString("Please try later.." , 30 , 0);
-		_delay_ms(1500);
-		return MENUE_EXIT;
-	}
-		
-	while (1)
-	{
-		showMinMaxValues( &minMax[BMP_180_PRESS] , 20 );
-		showMinMaxValues( &minMax[BMP_180_TEMP]  , 40 );	
-		
-		if ( button.enter || flag.menueTimeout )
-		{
-			break;
-		}
-	}
-	
-//	Ssd1306Clear();
-	
-	return 0;
-}
-
-uint8_t sht21MinMax				( void )
-{
-	if ( ! (readSens.ready & 1<<AVERAGE_FIRST_READY ) )
-	{
-		Ssd1306PutString("Please try later.." , 30 , 0);
-		_delay_ms(1500);
-		return MENUE_EXIT;
-	}
-	
-	while (1)
-	{
-		showMinMaxValues( &minMax[SHT_21_HUMIDITY] , 20 );
-		showMinMaxValues( &minMax[SHT_21_TEMP]  , 40 );	
-		
-		if ( button.enter || flag.menueTimeout )
-		{
-			break;
-		}	
-	}
-//	Ssd1306Clear();
-	
+	Ssd1306SendRam();
+				
 	return 0;
 }
 
 uint8_t menueExit				( void )
 {
-	button.enter = 0;
+	button.enter	= 0;
 	button.enterRpt = 0;
+	
 	return MENUE_EXIT;
-}
-
-uint8_t operatingHours			( void )
-{
-	Ssd1306PutString( "-Betriebsstunden" , 0 , 0 );
-	Ssd1306SetFont( fixednums15x31 );
-	
-	while (1)
-	{
-		u16Str( operating.hours , output );
-		Ssd1306PutString( output , 30 , 20 );
-		
-		if ( button.enterRpt || flag.menueTimeout )
-		{
-			flag.menueTimeout = 0;
-			break;
-		}
-		
-		if ( button.enter )
-		{
-			static uint8_t enterWasTipped = 0;
-			button.enter = 0;
-			if ( ++enterWasTipped >= 10 )
-			{
-//				Ssd1306Clear();
-				Ssd1306SetFont( System5x7 );
-				Ssd1306PutString("Zaehler geloescht!" , 30 , 0 );
-				enterWasTipped = 0;
-				eeprom_write_word( &operatingEEP.hours , 0 );
-				operating.hours = 0;
-				_delay_ms(500);
-				break;
-			}
-		}
-	}
-//	Ssd1306Clear();
-	
-	return 0;
 }
 
 uint8_t eepIsInit				( void )
@@ -860,7 +751,7 @@ uint8_t eepIsInit				( void )
 	return 1;
 }
 
-void eepReload					( void )
+void	eepReload				( void )
 {
 	if ( eepIsInit() )
 	{
@@ -869,66 +760,10 @@ void eepReload					( void )
 	}
 	
 	operating.hours = eeprom_read_word( &operatingEEP.hours );
-	ram.brightness = eeprom_read_byte( &eep.brightness );
+	ram.brightness	= eeprom_read_byte( &eep.brightness );
 }
 
-uint8_t setBrightness			( void )
-{
-	Ssd1306SetFont( System5x7 );
-	strcpy( output , "-" );
-	strcat( output , menueStructMain[4].Name );
-	Ssd1306PutString( output , 0 , 0 ); 
-	
-	char tmp[5] = "";
-	uint8_t old = 0;
-	volatile enc_t *encoder = &enc;
-	uint8_t bright = ram.brightness;
-	Ssd1306SetFont( fixednums15x31 );
-	
-	while (1)
-	{
- 		bright += encoder->result;
- 		encoder->result = 0;
-		
-		if ( old != bright)
-		{
-			old = bright;
-			tim.sec = 0;
-		}
-		
-		if ( bright >= 100 )
-		{
-			bright = 100;
-		}
-		if (bright <= 10)
-		{
-			bright = 10;
-		}
-		
-		itoa( bright , tmp , 10 );
-		strcpy( output , tmp );
-		strcat( output , "   ");
-		
-		Ssd1306PutString( output , 30 , 50 );
-		
-//		_Ssd1306SendCmd( SSD1306_CMD_SET_VCOM_DESELECT );
-//		_Ssd1306SendCmd( bright );
-		
-		if ( button.enter || flag.menueTimeout )
-		{
-			flag.menueTimeout	= 0;
-			button.enter		= 0;
-			break;
-		}
-	}
-	
- 	ram.brightness = bright;
- 	eeprom_update_byte( &eep.brightness , bright );
-	
-	return 0;
-}
-
-void updateLiveLed				( uint16_t *mil )
+void	updateLiveLed			( uint16_t *mil )
 {
 	#define CALC_LIVE(x) (x*1)
 	
@@ -954,22 +789,6 @@ void updateLiveLed				( uint16_t *mil )
 	}
 }
 
-uint8_t showErrors				( void )
-{
-	#define OFFSET_NEW_LINE			8
-		
-	Ssd1306SetFont( System5x7 );
-	Ssd1306PutString( "-Error(s)" , 0 , 0 );
-	
-	while ( !button.enter )
-	{
- 		Ssd1306PutString( errorGetById( &err , _ERROR_GLCD_I2C_ )	, 24 , 0 );
-  		Ssd1306PutString( errorGetById( &err , _ERROR_RTC_I2C_  )	, 32 , 0 );
- 		Ssd1306PutString( errorGetById( &err , _ERROR_SHT21_I2C_ )	, 40 , 0 );
-  		Ssd1306PutString( errorGetById( &err , _ERROR_BMP180_I2C_)	, 48 , 0 );
-	}	
-	return 0;
-}
 
 int main(void)
 {
@@ -980,9 +799,8 @@ int main(void)
 	i2c_init();
 	Ssd1306Init();
 	bmp180_init( &bmp180 );	
-	errorInit( &err );
 	
-	/*	Timer 1 ( 16 Bit ) 
+	/*	SystemTimeer 1 ( 16 Bit ) 
 	*	Wird auf CompareMatch eingestellt
 	*	Auslöseintervall.: 100ms
 	*/
@@ -990,12 +808,12 @@ int main(void)
 	TIMSK   = ( ( 1<<OCIE1A ) | ( 1<<OCIE2 ) );
 	OCR1A	= ((F_CPU / 64 / 100 ) - 1 );
 	
-	/*	Timer 2 
+	/*	SystemTimeer 2 
 	*	Wird auf CompareMatch eingestellt
 	*	Auslöseintervall.: 1ms
 	*/
-	TCCR2  |= ((1<<CS21) | (1<<WGM21)); // Prescaler : 8
-	OCR2   = ((F_CPU / 64 / 1000 ) - 1 );; 
+	TCCR2  |= ((1<<CS22) | (1<<WGM21)); // Prescaler : 64
+	OCR2   = 0x7C; 
 	
 	/*	Interrupts
 	*	Interrupts global freigeben
@@ -1025,42 +843,42 @@ int main(void)
 		{
 			operating.dispAutoOff = 0;
 			flag.dispIsOff = 1;
-			Ssd1306DisplayState( DISPLAY_OFF );
+			//Ssd1306DisplayState( DISPLAY_OFF );
 		}
 		
 		if ( flag.dispIsOff && button.enter )
 		{
 			flag.dispIsOff = 0;
 			button.enter = 0;
-			Ssd1306DisplayState( DISPLAY_ON );
+			//Ssd1306DisplayState( DISPLAY_ON );
 		}
 		
-		if ( readSens.ready & 1 << RTC_IS_RDY_TO_RD )
+		if ( Sensor.Ready & 1 << RTC_IS_RDY_TO_RD )
 		{
 			rtcGetData( &rtc );
-			readSens.ready &= ~( 1 << RTC_IS_RDY_TO_RD );
-			readSens.ready |= ( 1 << RTC_IS_RDY_TO_SHOW_TIME );
+			Sensor.Ready &= ~( 1 << RTC_IS_RDY_TO_RD );
+			Sensor.Ready |= ( 1 << RTC_IS_RDY_TO_SHOW_SystemTimeE );
 		}
 		
-		static uint8_t OldMinute = 0;
+		static uint8_t SecoundOld = 0;
 				
-		if ( readSens.ready & ( 1 << RTC_IS_RDY_TO_SHOW_TIME ) )
+		if ( Sensor.Ready & ( 1 << RTC_IS_RDY_TO_SHOW_SystemTimeE ) )
 		{					
-			if ( OldMinute != rtc.minute )
+			if ( SecoundOld != rtc.second )
 			{
-				OldMinute = rtc.minute;
+				SecoundOld = rtc.second;
 				Ssd1306SetFont( fixednums15x31 );
 				Ssd1306PutString( bcd_ttostr( rtc.hour , rtc.minute , rtc.second , TTOSTR_HH_MM ) , 0 , 22 );
 				Ssd1306SendRam();
 			}
-			readSens.ready &= ~( 1 << RTC_IS_RDY_TO_SHOW_TIME );	
+			Sensor.Ready &= ~( 1 << RTC_IS_RDY_TO_SHOW_SystemTimeE );	
 		}
 			
 		refreshDisplay();		
     }
 }
 
-/* Timer[1] -> Compare Match A
+/* SystemTimeer[1] -> Compare Match A
 *	Wird ca. jede 10ms aufgerufen
 */
 ISR( TIMER1_COMPA_vect )
@@ -1072,16 +890,16 @@ ISR( TIMER1_COMPA_vect )
 	liveLed++;
  	updateLiveLed( &liveLed );
 
-	if ( tim.mil++ >= 1000 )
+	if ( SystemTime.Milisecound++ >= 1000 )
 	{
-		tim.mil = 0;
-		flag.menueTimeout = 1;
+		SystemTime.Milisecound = 0;
+		flag.menueSystemTimeout = 1;
 	}
 
 	if ( rtcRead++ > 150 )
 	{		
 		rtcRead = 0;
-		readSens.ready |= (1<<RTC_IS_RDY_TO_RD);
+		Sensor.Ready |= (1<<RTC_IS_RDY_TO_RD);
 	}
 	 
 	if ( secoundCmp != rtc.second )
@@ -1092,7 +910,7 @@ ISR( TIMER1_COMPA_vect )
 		if ( sensorsRead++ > 5 )
 		{
 			sensorsRead = 0;
-			readSens.ready |= (1<<SENSORS_READY);
+			Sensor.Ready |= (1<<SENSORS_Ready);
 		}
 		
 		if ( operating.seconds++ > 59 )
@@ -1137,22 +955,25 @@ ISR( TIMER1_COMPA_vect )
     }	
 }
 
-/* Timer[2] -> Compare Match
+/* SystemTimeer[2] -> Compare Match
 *	Wird ca. jede 1ms aufgerufen
 */
-ISR(TIMER2_COMP_vect)
+ISR( TIMER2_COMP_vect )
 {	
     /*
     *   Drehenc auswertung.
     */
     enc.last = ( ( enc.last << 2 ) & 0x0F );
+	
     if (ENC_PIN & 1<<ENC_PHASE_B_bp)
     {
         enc.last |= 2;
     }
+	
     if (ENC_PIN & 1<<ENC_PHASE_A_bp)
     {
         enc.last |= 1;
     }   
+	
     enc.result += enc.table[enc.last]; 	
 }

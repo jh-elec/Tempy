@@ -231,6 +231,12 @@ void		Ssd1306ClearPixel( uint16_t y , uint16_t x )
 	DisplayRam[ x + ( y / 8 ) * SSD1306_LCD_Width ] &=  ~( 1 << ( y & 7 ) );
 }
 
+void		Ssd1306SetBrightness( uint8_t Brightness )
+{
+		_Ssd1306SendCmd( SSD1306_CMD_SET_VCOM_DESELECT );
+		_Ssd1306SendCmd( Brightness );
+}
+
 enum I2c_Return_Codes	Ssd1306SendRam( void )
 {
 	uint8_t buff[] =
