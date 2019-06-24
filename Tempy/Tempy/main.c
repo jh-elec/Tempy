@@ -58,9 +58,9 @@
 
 #define MEASUREMENT_AVERAGE		5
 
-#define CALC_MIN(MIN)			( MIN * 59 )
-#define CALC_HOUR(HOUR)			CALC_MIN( HOUR * 59)
-#define DISPLAY_AUTO_OFF		CALC_HOUR(3)
+#define CALC_MIN(MIN)			(uint16_t)( MIN * 59 )
+#define CALC_HOUR(HOUR)			(uint16_t)CALC_MIN( HOUR * 59 )
+#define DISPLAY_AUTO_OFF_SEC	(uint16_t)CALC_MIN(10)
 
 typedef struct  
 {
@@ -839,18 +839,18 @@ int main(void)
 			showMenue( menueStructMain , (enc_t*)&enc , sizeof(menueStructMain) / sizeof(menueStructMain[0]) );
  		}
 		
-		if ( operating.dispAutoOff > DISPLAY_AUTO_OFF )
+		if ( operating.dispAutoOff > DISPLAY_AUTO_OFF_SEC )
 		{
 			operating.dispAutoOff = 0;
 			flag.dispIsOff = 1;
-			//Ssd1306DisplayState( DISPLAY_OFF );
+			Ssd1306DisplayState( DISPLAY_OFF );
 		}
 		
 		if ( flag.dispIsOff && button.enter )
 		{
 			flag.dispIsOff = 0;
 			button.enter = 0;
-			//Ssd1306DisplayState( DISPLAY_ON );
+			Ssd1306DisplayState( DISPLAY_ON );
 		}
 		
 		if ( Sensor.Ready & 1 << RTC_IS_RDY_TO_RD )
@@ -955,7 +955,7 @@ ISR( TIMER1_COMPA_vect )
     }	
 }
 
-/* SystemTimeer[2] -> Compare Match
+/* SystemTimer[2] -> Compare Match
 *	Wird ca. jede 1ms aufgerufen
 */
 ISR( TIMER2_COMP_vect )

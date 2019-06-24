@@ -115,7 +115,9 @@ static inline void		_GetFont( uint8_t c , Font_t *ptrFnt )
 
 void		Ssd1306Init(void)
 {
-//  Ssd1306DisplayState( DISPLAY_OFF );
+	
+// 	Ssd1306DisplayState( DISPLAY_OFF );
+// 	
 // 	static uint8_t buff[] =
 // 	{
 // 		0x20, 
@@ -140,10 +142,16 @@ void		Ssd1306Init(void)
 // 		0xF0,			// --set divide ratio
 // 		0xD9, 0,		// Set pre-charge period
 // 		0xDA, 0x12,		// Set com pins hardware configuration
-// 		0xDB,			// --set vcomh
-// 		0x20,			// 0x20,0.77xVcc
+//  		0xDB,			// --set vcomh
+//  		0x20,			// 0x20,0.77xVcc
 // 		0x8D, 0x04,		// Set DC-DC enable
-// 	}; 28 Parameter
+// 	}; // 28 Parameter
+// 	
+// 	for (uint8_t i = 0 ; i < sizeof(buff) ; i++ )
+// 	{
+// 		_Ssd1306SendCmd( buff[i] );
+// 	}
+// 	
 // 	Ssd1306DisplayState( DISPLAY_ON );
 
 
@@ -267,8 +275,15 @@ enum I2c_Return_Codes	Ssd1306SendRam( void )
 
 uint16_t	Ssd1306PutChar( uint8_t c , uint16_t y , uint16_t x )
 {
+	cli();
+	
 	uint16_t i;
 	uint8_t FontPixelByte , mask , tmpmask , pixels , k , j ;
+	
+	if ( y > 63 || x > 127 )
+	{
+		return 1; // Werte außerhalb des Bereiches
+	}
 	
 	_ClearFont( &Font );
 	_GetFont( c , &Font );
@@ -364,6 +379,8 @@ uint16_t	Ssd1306PutChar( uint8_t c , uint16_t y , uint16_t x )
 			y += 8 ;
 		}//for k		
 	}
+	
+	sei();
 	
 	return ( Font.uiWidht + 1 );
 }
